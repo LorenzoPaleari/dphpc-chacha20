@@ -25,13 +25,15 @@ void ChaCha20::setCounter(uint32_t counter){
     this->state[12] = counter;
 }
 
-void ChaCha20::block_quarter_round(uint8_t result[64]){
+void ChaCha20::block_quarter_round(uint8_t result[64], uint32_t counter){
     uint32_t temp[16];
 
     //MAKE A COPY OF THE STATE, SO WE CAN USE IT LATER
     for (int i = 0; i < 16; i++){
         temp[i] = this->state[i];
     }
+
+    temp[12] = counter;
 
     for (int i = 0; i < 10; i++){
         quarter_round(&temp[0], &temp[4], &temp[8], &temp[12]);
@@ -48,11 +50,34 @@ void ChaCha20::block_quarter_round(uint8_t result[64]){
     for (int i = 0; i < 16; i++){
         temp[i] += this->state[i];
     }
+    temp[12] += counter;
 
     //COPY THE SCRUMBLED STATE TO THE RESULT POINTER AS LITTLE ENDIAN
     for (int i = 0; i < 16; i++){
         uint32_to_uint8(temp[i], result + (i * 4));
     }
+}
+
+uint8_t  *ChaCha20::encrypt(uint8_t *input, int len){
+
+    int len_padded = (len + 63) & ~63;
+    uint8_t *result = (uint8_t*) malloc(sizeof(uint8_t) * len_padded);
+    
+    int i;
+    for (i = 0; i < len/64; i++){
+        this->block_quarter_round(result + i*64, i+1);
+        for (int j = 0; j < 64; j++)
+            result[i*64 + j] ^= input[i*64 + j];
+    }
+
+    int over = len%64;
+    if (over != 0){
+        this->block_quarter_round(result + i*64, i+1);
+        for (int j = 0; j < over; j++)
+            result[i*64 + j] ^= input[i*64 + j];
+    }
+
+    return result;
 }
 
 uint32_t rotation_l32(uint32_t x, int n){
