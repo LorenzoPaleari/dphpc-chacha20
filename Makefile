@@ -1,7 +1,7 @@
 CXXFLAGS := -Wall -Wextra -Werror -pedantic -std=c++11 -O0 -march=native
 INCLUDES := 
 TARGET := bin
-FILES := ./src/chacha.cpp main.cpp
+FILES := ./src/chacha.cpp main.cpp ./src/test_client.cpp
 OBJS := $(FILES:.cpp=.o)
 
 all: $(TARGET)
