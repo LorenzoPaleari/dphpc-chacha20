@@ -6,3 +6,4 @@ class TestClient {
 
 bool chacha20_rfc();
 bool chacha20_rfc_text();
+bool chacha20_enc_dec();

@@ -80,6 +80,10 @@ uint8_t  *ChaCha20::encrypt(uint8_t *input, int len){
     return result;
 }
 
+uint8_t  *ChaCha20::decrypt(uint8_t *input, int len){
+    return this->encrypt(input, len);
+}
+
 uint32_t rotation_l32(uint32_t x, int n){
     return (x << n) | (x >> (32 - n));
 }

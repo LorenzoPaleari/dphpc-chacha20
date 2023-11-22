@@ -7,6 +7,7 @@ TestClient::TestClient(){
     bool (*fns[])() = {
         chacha20_rfc,
         chacha20_rfc_text,
+        chacha20_enc_dec,
         0x0
     };
 
@@ -96,5 +97,25 @@ bool chacha20_rfc_text(){
         }
     }
 
+    free(result);
+
     return true;
+}
+
+bool chacha20_enc_dec(){
+    char input[] = "Hi lorenzo, how are you? I'm fine, thank you. What about you? I'm fine too, thank you. Bye bye! See you soon! I don't want to see you anymore!";
+
+    uint8_t key[32];
+
+    for (int i = 0; i < 32; i++){
+        key[i] = i;
+    }
+    uint8_t nonce[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x4a,0x00,0x00,0x00,0x00};
+    ChaCha20 block = ChaCha20(key,nonce);
+
+    uint8_t *result = block.encrypt((uint8_t *)input, strlen(input)+1);
+    uint8_t *decrypted = block.decrypt(result, strlen(input)+1);
+
+    return strcmp((char *)decrypted, input) == 0;
+
 }
