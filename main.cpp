@@ -37,10 +37,14 @@ static bool from_file(char const *argv[]){
     uint8_t *result = chacha.encrypt(message, len);
     auto end = std::chrono::high_resolution_clock::now();
     last_time = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
-    cout << "Time: " << last_time << " microseconds" << endl;
+    cout << "Enc Time: " << last_time << " microseconds" << endl;
     
     // check if decrypt is the inverse of encrypt
+    start = std::chrono::high_resolution_clock::now();
     result = chacha.decrypt(result, len);
+    end = std::chrono::high_resolution_clock::now();
+    last_time = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
+    cout << "Dec Time: " << last_time << " microseconds" << endl;
 
 #pragma omp parallel for
     for (long i = 0; i < len; i++) {
