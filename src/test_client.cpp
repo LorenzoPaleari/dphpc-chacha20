@@ -1,5 +1,6 @@
 #include "../include/test_client.hpp"
 #include "../include/chacha.hpp"
+#include <string.h>
 #include <iostream>
 using namespace std;
 
@@ -115,6 +116,8 @@ bool chacha20_enc_dec(){
 
     uint8_t *result = block.encrypt((uint8_t *)input, strlen(input)+1);
     uint8_t *decrypted = block.decrypt(result, strlen(input)+1);
+
+    free(result);
 
     return strcmp((char *)decrypted, input) == 0;
 

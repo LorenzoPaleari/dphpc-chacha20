@@ -1,4 +1,5 @@
 #include "../include/chacha.hpp"
+#include "/usr/local/opt/libomp/include/omp.h"
 
 using namespace std;
 
@@ -62,15 +63,17 @@ uint8_t  *ChaCha20::encrypt(uint8_t *input, int len){
 
     int len_padded = (len + 63) & ~63;
     uint8_t *result = (uint8_t*) malloc(sizeof(uint8_t) * len_padded);
+    uint32_t num_blocks = len/64;
+    int over = len%64;
     
-    int i;
-    for (i = 0; i < len/64; i++){
-        this->block_quarter_round(result + i*64, i+1);
-        for (int j = 0; j < 64; j++)
-            result[i*64 + j] ^= input[i*64 + j];
+    uint32_t i;
+    for (i = 0; i < num_blocks; i++){
+        this->_encrypt_single_block(input + i*64, result + i*64, i+1);
+        // this->block_quarter_round(result + i*64, i+1);
+        // for (int j = 0; j < 64; j++)
+        //     result[i*64 + j] ^= input[i*64 + j];
     }
 
-    int over = len%64;
     if (over != 0){
         this->block_quarter_round(result + i*64, i+1);
         for (int j = 0; j < over; j++)
@@ -78,6 +81,14 @@ uint8_t  *ChaCha20::encrypt(uint8_t *input, int len){
     }
 
     return result;
+}
+
+void ChaCha20::_encrypt_single_block(uint8_t *input, uint8_t *result, uint32_t counter){
+    
+    this->block_quarter_round(result, counter);
+    for (int j = 0; j < 64; j++)
+        *(result + j) ^= *(input + j);
+
 }
 
 uint8_t  *ChaCha20::decrypt(uint8_t *input, int len){
