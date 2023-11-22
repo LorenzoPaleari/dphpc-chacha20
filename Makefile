@@ -3,7 +3,7 @@ INCLUDES :=
 TARGET := bin
 FILES := ./src/chacha.cpp main.cpp ./src/test_client.cpp
 OBJS := $(FILES:.cpp=.o)
-F_NAME := input.txt
+F_POS := input_data/
 
 all: $(TARGET)
 
@@ -16,9 +16,7 @@ $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@ $(INCLUDES)
 
 run: $(TARGET)
-	base64 -i /dev/urandom | head -c $(LEN) > $(F_NAME)
-	export OMP_NUM_THREADS=$(NUM_T)
-	./$(TARGET) $(LEN) $(F_NAME)
+	./$(TARGET) $(LEN) $(F_POS)input_$(LEN).txt
 	
 clean:
 	rm -fR bin $(OBJS)

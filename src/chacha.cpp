@@ -59,15 +59,15 @@ void ChaCha20::block_quarter_round(uint8_t result[64], uint32_t counter){
     }
 }
 
-uint8_t  *ChaCha20::encrypt(uint8_t *input, int len){
+uint8_t  *ChaCha20::encrypt(uint8_t *input, long len){
 
-    int len_padded = (len + 63) & ~63;
+    long len_padded = (len + 63) & ~63;
     uint8_t *result = (uint8_t*) malloc(sizeof(uint8_t) * len_padded);
-    uint32_t num_blocks = len/64;
-    int over = len%64;
-    
-    uint32_t i;
-    for (i = 0; i < num_blocks; i++){
+    long num_blocks = len/64;
+    long over = len%64;
+
+#pragma omp parallel for
+    for (long i = 0; i < num_blocks; i++){
         this->_encrypt_single_block(input + i*64, result + i*64, i+1);
         // this->block_quarter_round(result + i*64, i+1);
         // for (int j = 0; j < 64; j++)
@@ -75,9 +75,9 @@ uint8_t  *ChaCha20::encrypt(uint8_t *input, int len){
     }
 
     if (over != 0){
-        this->block_quarter_round(result + i*64, i+1);
+        this->block_quarter_round(result + num_blocks*64, num_blocks+1);
         for (int j = 0; j < over; j++)
-            result[i*64 + j] ^= input[i*64 + j];
+            result[num_blocks*64 + j] ^= input[num_blocks*64 + j];
     }
 
     return result;
@@ -91,7 +91,7 @@ void ChaCha20::_encrypt_single_block(uint8_t *input, uint8_t *result, uint32_t c
 
 }
 
-uint8_t  *ChaCha20::decrypt(uint8_t *input, int len){
+uint8_t  *ChaCha20::decrypt(uint8_t *input, long len){
     return this->encrypt(input, len);
 }
 
