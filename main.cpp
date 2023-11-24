@@ -72,14 +72,6 @@ static bool from_file(char const *argv[]){
 
 static bool multiple_run(const char *argv[]){
     long max_len_size = atol(argv[1]);
-
-    //check if folder output_data exists
-    struct stat sb;
-    if (stat("output_data", &sb)) {
-        cout << "Creating output_data folder" << endl;
-        system("mkdir output_data");
-    }
-
     int n_threads = omp_get_max_threads();
 
     long start_len = 1000; // 1 KB
@@ -102,6 +94,7 @@ static bool multiple_run(const char *argv[]){
             fflush(stdout);
 
             for(int k = 1; k <= n_threads; k++){
+                omp_set_num_threads(k);
                 uint8_t *message = (uint8_t *) malloc(sizeof(uint8_t) * start_len);
                 for (long i = 0; i < start_len; i++) {
                     message[i] = rand() % 256;
