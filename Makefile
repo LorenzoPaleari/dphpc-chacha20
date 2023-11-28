@@ -21,7 +21,7 @@ s_run: $(TARGET) check-env
 m_run: $(TARGET) check-env check-files
 	./$(TARGET) $(LEN)
 	@if [ $$? -eq 0 ]; then \
-	    printf "\n\033[1;32mRun ended without errors.\033[0m\n\nTo plot result please do:\n\033[1mpython3 ./output_data/plots.py\033[0m\n\n"; \
+	    printf "\n\033[1;32mRun ended without errors.\033[0m\n\nTo plot result please do:\n\033[1mpython3 ./output_data/graphs.py\033[0m\n\n"; \
 	else \
 	    printf "\033[1;31mError: The run failed.\033[0m\n"; \
 	fi

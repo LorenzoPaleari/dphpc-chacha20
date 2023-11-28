@@ -15,11 +15,11 @@ def format_size(size):
     if size < 1000:
         return f"{size} B"
     elif size < 1000**2:
-        return f"{size / 1000} KB"
+        return f"{size / 1024} KB"
     elif size < 1000**3:
-        return f"{size / 1000**2} MB"
+        return f"{size / 1024**2} MB"
     else:
-        return f"{size / 1000**3} GB"
+        return f"{size / 1024**3} GB"
 
 files = os.listdir('./output_data/')
 for file in files:
