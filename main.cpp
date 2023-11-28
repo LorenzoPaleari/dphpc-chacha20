@@ -74,7 +74,7 @@ static bool multiple_run(const char *argv[]){
     long max_len_size = atol(argv[1]);
     int n_threads = omp_get_max_threads();
 
-    long start_len = 1000; // 1 KB
+    long start_len = 1024; // 1 KB
     while(start_len <= max_len_size) {
         // write to file output_data/{len}_out - create if not exists
         cout << "Running with len: " << start_len << endl;
@@ -114,7 +114,7 @@ static bool multiple_run(const char *argv[]){
             fprintf(fp, "\n");
         }
         printf("\n");
-        start_len *= 10;
+        start_len *= 4;
         fclose(fp);
     }
 
