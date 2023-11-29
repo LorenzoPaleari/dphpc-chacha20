@@ -21,28 +21,30 @@ static long *start_run(uint8_t *message, long len){
 
     long *times = (long *) malloc(sizeof(long) * 2);
     auto start = std::chrono::high_resolution_clock::now();
-    uint8_t *result = chacha.encrypt(message, len);
+    uint8_t *enc_result = chacha.encrypt(message, len);
     auto end = std::chrono::high_resolution_clock::now();
     times[0] = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
     // cout << "Enc Time: " << enc_time << " microseconds" << endl;
     
     // check if decrypt is the inverse of encrypt
     start = std::chrono::high_resolution_clock::now();
-    result = chacha.decrypt(result, len);
+    uint8_t *dec_result = chacha.decrypt(enc_result, len);
     end = std::chrono::high_resolution_clock::now();
     times[1] = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
     // cout << "Dec Time: " << last_time << " microseconds" << endl;
 
 #pragma omp parallel for
     for (long i = 0; i < len; i++) {
-        if(message[i] != result[i]) {
+        if(message[i] != dec_result[i]) {
             cout << "\033[31m\033[1mError: message and result are not the same\033[0m" << endl;
-            free(result);
+            free(enc_result);
+            free(dec_result);
             exit(1);
         }
     }
 
-    free(result);
+    free(enc_result);
+    free(dec_result);
     return times;
 }
 

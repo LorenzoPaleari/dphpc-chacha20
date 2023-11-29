@@ -117,8 +117,10 @@ bool chacha20_enc_dec(){
     uint8_t *result = block.encrypt((uint8_t *)input, strlen(input)+1);
     uint8_t *decrypted = block.decrypt(result, strlen(input)+1);
 
+    bool res = strcmp((char *)decrypted, input) == 0;
+
     free(result);
+    free(decrypted);
 
-    return strcmp((char *)decrypted, input) == 0;
-
+    return res;
 }
