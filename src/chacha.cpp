@@ -1,5 +1,10 @@
 #include "../include/chacha.hpp"
+
+#ifdef Darwin
 #include "/usr/local/opt/libomp/include/omp.h"
+#else
+#include <omp.h>
+#endif
 
 using namespace std;
 

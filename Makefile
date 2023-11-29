@@ -1,13 +1,17 @@
-CXXFLAGS := -Wall -Wextra -Werror -pedantic -std=c++11 -O3 -march=native -fopenmp
-INCLUDES := 
+UNAME := $(shell uname)
 TARGET := bin
-FILES := ./src/chacha.cpp main.cpp ./src/test_client.cpp
-OBJS := $(FILES:.cpp=.o)
 F_POS := input_data/
+FILES := ./src/chacha.cpp main.cpp ./src/test_client.cpp
+CXXFLAGS := -D $(UNAME) -Wall -Wextra -Werror -pedantic -std=c++11 -O3 -march=native -fopenmp
+OBJS := $(FILES:.cpp=.o)
+
+ifeq ($(UNAME), Darwin)
+	CXX := g++-13
+else
+	CXX := g++
+endif
 
 all: $(TARGET)
-
-CXX := g++-13
 
 $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS) $(INCLUDES)
@@ -43,7 +47,7 @@ check-files:
 	@MISSING_COUNT=`echo "$(MISSING_FILES)" | awk '{print NF}'`; \
 	if [ $$MISSING_COUNT -gt 0 ]; then \
     	printf "\033[1;33mMissing files: $(MISSING_FILES)\033[0m\n\n"; \
-    	source gen_test_data.sh; \
+    	. ./gen_test_data.sh; \
 		printf "\n\n"; \
 	else \
     	printf "\033[1;32mAll input files are present.\033[0m\n\n"; \
