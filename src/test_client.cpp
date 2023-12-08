@@ -5,7 +5,7 @@
 using namespace std;
 
 TestClient::TestClient(){
-    bool (*fns[])() = {
+    bool (*fns[])(int) = {
         chacha20_rfc,
         chacha20_rfc_text,
         chacha20_enc_dec,
@@ -26,15 +26,23 @@ TestClient::TestClient(){
     cout << "Passed " << passed << " tests out of " << i << endl;
 }
 
-bool TestClient::runTest(int i, bool (*tf)()){
-    bool result = tf();
+bool TestClient::runTest(int i, bool (*tf)(int)){
+    #define OPT_L 2
+
+    bool result = true;
+
+    for(int j = 0; j < OPT_L; j++){
+        result = tf(j);
+        if (!result) break;
+    }
+
     if(result) cout << "\033[32mTest " << i+1 << " passed\033[0m" << endl;
     else cout << "\033[31mTest " << i+1 << " failed\033[0m" << endl;
 
-    return result;
+    return true;
 }
 
-bool chacha20_rfc(){
+bool chacha20_rfc(int opt){
     // The key is set to 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f...1e:1f
     uint8_t key[32];
 
@@ -48,7 +56,8 @@ bool chacha20_rfc(){
     ChaCha20 block = ChaCha20(key,nonce);
 
     uint8_t result[64];
-    block.block_quarter_round(result, 1);
+    if(opt > 1) block.block_quarter_round_opt1(result, 1);
+    else block.block_quarter_round(result, 1);
 
     uint8_t expected_result[] = {
        0x10, 0xf1, 0xe7, 0xe4, 0xd1, 0x3b, 0x59, 0x15, 0x50, 0x0f, 0xdd, 0x1f, 0xa3, 0x20, 0x71, 0xc4,
@@ -66,7 +75,7 @@ bool chacha20_rfc(){
     return true;
 }
 
-bool chacha20_rfc_text(){
+bool chacha20_rfc_text(int opt){
     char input[] = "Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it.";
     // The key is set to 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f...1e:1f
     uint8_t key[32];
@@ -79,7 +88,7 @@ bool chacha20_rfc_text(){
     uint8_t nonce[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x4a,0x00,0x00,0x00,0x00};
 
     ChaCha20 block = ChaCha20(key,nonce);
-    uint8_t *result = block.encrypt((uint8_t *)input, strlen(input));
+    uint8_t *result = block.encryptOpt(opt, (uint8_t *)input, strlen(input));
 
     uint8_t result_expected[] = {
         0x6e, 0x2e, 0x35, 0x9a, 0x25, 0x68, 0xf9, 0x80, 0x41, 0xba, 0x07, 0x28, 0xdd, 0x0d, 0x69, 0x81,
@@ -103,7 +112,7 @@ bool chacha20_rfc_text(){
     return true;
 }
 
-bool chacha20_enc_dec(){
+bool chacha20_enc_dec(int opt){
     char input[] = "Hi lorenzo, how are you? I'm fine, thank you. What about you? I'm fine too, thank you. Bye bye! See you soon! I don't want to see you anymore!";
 
     uint8_t key[32];
@@ -114,8 +123,8 @@ bool chacha20_enc_dec(){
     uint8_t nonce[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x4a,0x00,0x00,0x00,0x00};
     ChaCha20 block = ChaCha20(key,nonce);
 
-    uint8_t *result = block.encrypt((uint8_t *)input, strlen(input)+1);
-    uint8_t *decrypted = block.decrypt(result, strlen(input)+1);
+    uint8_t *result = block.encryptOpt(opt, (uint8_t *)input, strlen(input)+1);
+    uint8_t *decrypted = block.decryptOpt(opt, result, strlen(input)+1);
 
     bool res = strcmp((char *)decrypted, input) == 0;
 
