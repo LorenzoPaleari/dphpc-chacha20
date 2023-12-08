@@ -7,7 +7,7 @@
 import matplotlib.pyplot as plt
 import os
 
-mean_dict = {}
+graph_array = {}
 
 def format_size(size):
     size = int(size)
@@ -21,6 +21,8 @@ def format_size(size):
     else:
         return f"{size / 1024**3} GB"
 
+cores_label = []
+
 files = os.listdir('./output_data/')
 for file in files:
     if "_out" not in file:
@@ -28,9 +30,11 @@ for file in files:
     
     with open('./output_data/' + file, 'r') as f:
         size = file.split('_')[0]
-        n_threads = int(f.readline().strip())
+        opt_num = file.split('_')[1][3]
+        cores_label = f.readline().strip().split(',')
         lines = f.readlines()
 
+        mean_dict = {}
         mean_dict[size] = { 'enc': [], 'dec': []}
 
         for l in lines:
@@ -43,30 +47,56 @@ for file in files:
         
         mean_dict[size]['enc'] = [ sum(t) / len(t) for t in zip(*mean_dict[size]['enc']) ]
         mean_dict[size]['dec'] = [ sum(t) / len(t) for t in zip(*mean_dict[size]['dec']) ]
+        
+        if opt_num not in graph_array:
+            graph_array[opt_num] = {}
+        
+        graph_array[opt_num][size] = mean_dict[size]
 
 # Plot: each line should be a thread
 # points: x = size, y = time
 
-sizes = sorted(mean_dict.keys(), key=int)  # sort the sizes
+optimizations = sorted(graph_array.keys(), key=int)  # sort the optimizations
+opt_speedup_enc = {}
+opt_speedup_dec = {}
 
-# Plot for encryption
-plt.figure(figsize=(10, 6))
-for i in range(len(mean_dict[sizes[0]]['enc'])):  # number of threads
-    plt.plot([format_size(size) for size in sizes], [mean_dict[size]['enc'][i] for size in sizes], marker='o', label=f'{i+1} Threads')
-plt.xlabel('Size of Input')
-plt.ylabel('Time (s)')
-plt.title('Encryption Time vs Size of Input for Different Threads')
-plt.legend()
-plt.grid(True)
-plt.savefig('./output_data/enc_time.png')
+#for all optimizations calculate the speedup
+for opt in optimizations:
+    #sort the sizes
+    sizes = sorted(graph_array[opt].keys(), key=int)
 
-# Plot for decryption
-plt.figure(figsize=(10, 6))
-for i in range(len(mean_dict[sizes[0]]['dec'])):  # number of threads
-    plt.plot([format_size(size) for size in sizes], [mean_dict[size]['dec'][i] for size in sizes], marker='o', label=f'{i+1} Threads')
-plt.xlabel('Size of Input')
-plt.ylabel('Time (s)')
-plt.title('Decryption Time vs Size of Input for Different Threads')
-plt.legend()
-plt.grid(True)
-plt.savefig('./output_data/dec_time.png')
+    speedup_enc = []
+    speedup_dec = []
+
+    for i in range(len(graph_array[opt][sizes[0]]['enc'])):  # number of threads
+        speedup_enc.append(graph_array[opt][sizes[-1]]['enc'][0] / graph_array[opt][sizes[-1]]['enc'][i])
+        speedup_dec.append(graph_array[opt][sizes[-1]]['dec'][0] / graph_array[opt][sizes[-1]]['dec'][i]) 
+    
+    opt_speedup_enc[opt] = speedup_enc
+    opt_speedup_dec[opt] = speedup_dec
+
+
+
+for opt in optimizations:
+    sizes = sorted(graph_array[opt].keys(), key=int)  # sort the sizes
+    # Plot for encryption
+    plt.figure(figsize=(10, 6))
+    for i in range(len(graph_array[opt][sizes[0]]['enc'])):  # number of threads
+        plt.plot([format_size(size) for size in sizes], [graph_array[opt][size]['enc'][i] for size in sizes], marker='o', label=f'{cores_label[i]} Threads ({opt_speedup_enc[opt][i]:.2f}x)')
+    plt.xlabel('Size of Input')
+    plt.ylabel('Time (s)')
+    plt.title('Encryption Time vs Size of Input for Different Threads')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig('./output_data/enc_time_opt'+ opt +'.png')
+
+    # Plot for decryption
+    plt.figure(figsize=(10, 6))
+    for i in range(len(graph_array[opt][sizes[0]]['dec'])):  # number of threads
+        plt.plot([format_size(size) for size in sizes], [graph_array[opt][size]['dec'][i] for size in sizes], marker='o', label=f'{cores_label[i]} Threads ({opt_speedup_dec[opt][i]:.2f}x)')
+    plt.xlabel('Size of Input')
+    plt.ylabel('Time (s)')
+    plt.title('Decryption Time vs Size of Input for Different Threads')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig('./output_data/dec_time_opt'+ opt +'.png')
