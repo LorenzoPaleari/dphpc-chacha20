@@ -43,6 +43,7 @@ printf("Checking if message and result are the same\n");
 static bool from_file(char const *argv[]){
     // atoi converts string to int, i need a long
     long len = atol(argv[1]);
+    int opt = atoi(argv[3]);
     uint8_t *message = (uint8_t *) malloc(sizeof(uint8_t) * len);
 
     // Read file
@@ -64,7 +65,7 @@ static bool from_file(char const *argv[]){
 
     fread(message, sizeof(uint8_t), len, fp);
     cout << "Read file of size " << len << " bytes" << endl;
-    long *time = start_run(message, len, chacha, 1);
+    long *time = start_run(message, len, chacha, opt);
     cout << "Enc Time: " << time[0] << " microseconds" << endl;
     cout << "Dec Time: " << time[1] << " microseconds" << endl;
 
@@ -204,7 +205,7 @@ int main(int argc, char const *argv[])
     ChaCha20 chacha = ChaCha20(key, nonce);
 
     switch(argc){
-        case 3:
+        case 4:
             from_file(argv);
             break;
         case 2:

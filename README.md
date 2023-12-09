@@ -8,7 +8,7 @@ Number of threads modifiable inside [here](./num_thread_definer.sh)
 #### Single run with specific file:
 
 ```
-make s_run LEN=YOUR_DATA_SIZE
+make s_run LEN=YOUR_DATA_SIZE VER=OPTIMIZATION_VERSION (default to 0)
 make s_run LEN=4069 //For example
 ```
 
@@ -17,6 +17,21 @@ make s_run LEN=4069 //For example
 make m_run LEN=MAX_DATA_SIZE
 make m_run LEN=67108864
 //For example this last command will test 1024 4096 16384 ... 67108864
+```
+
+#### Callgrind (Valgrind tool)
+It will run s_run with callgrind
+```
+make callgrind LEN=YOUR_DATA_SIZE VER=OPTIMIZATION_VERSION (default to 0)
+make callgrind LEN=4096 VER=1
+```
+
+#### Check -03 optimizations missed
+It will run s_run with callgrind
+```
+make check-no-inline
+make check-no-vectorizazion
+make check-no-loop-unrolling
 ```
 
 #### Clean
