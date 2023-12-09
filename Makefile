@@ -2,8 +2,11 @@ UNAME := $(shell uname)
 TARGET := bin
 F_POS := input_data/
 FILES := ./src/chacha.cpp main.cpp ./src/test_client.cpp
-CXXFLAGS := -D $(UNAME) -D CHEC$(if $(findstring Y,$(CHECK)),K) -Wall -Wextra -Werror -pedantic -std=c++11 -O3 -march=native -fopenmp
+FILE_CHACHA := ./src/chacha.cpp
+FILE_CHACHA_O := ./src/chacha.o
+CXXFLAGS := -D $(UNAME) -D CHEC$(if $(findstring Y,$(CHECK)),K) -Wall -Wextra -Werror -pedantic -std=c++11 -ffast-math -O3 -march=native -fopenmp
 OBJS := $(FILES:.cpp=.o)
+VER ?= 0
 
 ifeq ($(UNAME), Darwin)
 	CXX := g++-13
@@ -20,7 +23,7 @@ $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@ $(INCLUDES)
 
 s_run: $(TARGET) check-env check-files
-	./$(TARGET) $(LEN) $(F_POS)input_$(LEN).txt
+	./$(TARGET) $(LEN) $(F_POS)input_$(LEN).txt $(VER)
 
 m_run: $(TARGET) check-env
 	./$(TARGET) $(LEN)
@@ -29,7 +32,20 @@ m_run: $(TARGET) check-env
 	else \
 	    printf "\033[1;31mError: The run failed.\033[0m\n"; \
 	fi
-	
+
+callgrind: $(TARGET) check-env check-files
+	mkdir -p callgrind
+	valgrind --tool=callgrind --simulate-cache=yes --callgrind-out-file=callgrind/callgrind_$(LEN)_opt$(VER) ./$(TARGET) $(LEN) $(F_POS)input_$(LEN).txt $(VER)
+
+check-no-inline: clean
+	$(CXX) $(CXXFLAGS) -fopt-info-inline-missed -c $(FILE_CHACHA) -o $(FILE_CHACHA_O)  $(INCLUDES)
+
+check-no-vectorizazion: clean
+	$(CXX) $(CXXFLAGS) -fopt-info-vec-missed -c $(FILE_CHACHA) -o $(FILE_CHACHA_O)  $(INCLUDES)
+
+check-no-loop-unrolling: clean
+	$(CXX) $(CXXFLAGS) -fopt-info-loop-missed -c $(FILE_CHACHA) -o $(FILE_CHACHA_O)  $(INCLUDES)
+
 clean:
 	rm -fR bin $(OBJS)
 
@@ -37,7 +53,7 @@ clean-all: clean
 	rm -fR input_data
 
 check-env:
-	@[ -n "$(OMP_NUM_THREADS)" ] printf "\033[1;32mThread number set up correctly.\033[0m\n\n" || (printf "\033[1;33mERROR\033[0m\n\033[33mThe number of threads is not set. Please do: \n\nsource num_thread_definer.sh\033[0m\n\n")
+	@[ -n "$(OMP_NUM_THREADS)" ]; printf "\033[1;32mThread number set up correctly.\033[0m\n\n" || (printf "\033[1;33mERROR\033[0m\n\033[33mThe number of threads is not set. Please do: \n\nsource num_thread_definer.sh\033[0m\n\n")
 
 check-files:
 	@MISSING_FILE=$(if $(wildcard $(F_POS)input_$(LEN).txt),,$(LEN)); \
