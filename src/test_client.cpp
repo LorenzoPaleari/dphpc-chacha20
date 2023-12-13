@@ -3,6 +3,7 @@
 #include <string.h>
 #include <iostream>
 using namespace std;
+#define OPT_L 3
 
 TestClient::TestClient(){
     bool (*fns[])(int) = {
@@ -27,7 +28,6 @@ TestClient::TestClient(){
 }
 
 bool TestClient::runTest(int i, bool (*tf)(int)){
-    #define OPT_L 3
 
     bool result = true;
 
@@ -132,19 +132,19 @@ bool chacha20_rfc_text(int opt){
         0x87, 0x4d
     };
 
-    for (size_t i = 0; i < strlen(input); i++){
+    for (size_t i = 0; i < 114; i++){
         if (result[i] != result_expected[i]){
             return false;
         }
     }
-
-    free(result);
 
     return true;
 }
 
 bool chacha20_enc_dec(int opt){
     char input[] = "Hi lorenzo, how are you? I'm fine, thank you. What about you? I'm fine too, thank you. Bye bye! See you soon! I don't want to see you anymore!";
+    char *input2 = (char *) malloc(strlen(input)+1);
+    strcpy(input2, input);
 
     uint8_t key[32];
 
@@ -154,13 +154,10 @@ bool chacha20_enc_dec(int opt){
     uint8_t nonce[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x4a,0x00,0x00,0x00,0x00};
     ChaCha20 block = ChaCha20(key,nonce);
 
-    uint8_t *result = block.encryptOpt(opt, (uint8_t *)input, strlen(input)+1);
-    uint8_t *decrypted = block.decryptOpt(opt, result, strlen(input)+1);
+    block.encryptOpt(opt, (uint8_t *)input, strlen(input)+1);
+    uint8_t *decrypted = block.decryptOpt(opt, (uint8_t *)input, strlen(input2)+1);
 
-    bool res = strcmp((char *)decrypted, input) == 0;
-
-    free(result);
-    free(decrypted);
-
+    bool res = strcmp((char *)decrypted, input2) == 0;
+    free(input2);
     return res;
 }

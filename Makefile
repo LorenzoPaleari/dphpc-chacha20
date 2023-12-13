@@ -37,6 +37,9 @@ callgrind: $(TARGET) check-env check-files
 	mkdir -p callgrind
 	valgrind --tool=callgrind --simulate-cache=yes --callgrind-out-file=callgrind/callgrind_$(LEN)_opt$(VER) ./$(TARGET) $(LEN) $(F_POS)input_$(LEN).txt $(VER)
 
+valgrind: $(TARGET) check-env check-files
+	valgrind --leak-check=yes --track-origins=yes ./$(TARGET) $(LEN) $(F_POS)input_$(LEN).txt $(VER)
+
 check-no-inline: clean
 	$(CXX) $(CXXFLAGS) -fopt-info-inline-missed -c $(FILE_CHACHA) -o $(FILE_CHACHA_O)  $(INCLUDES)
 

@@ -5,7 +5,11 @@
 #include <string.h>
 #include <chrono>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <math.h>
 #define N_RUNS 10
+#define OPT_L 2
 using namespace std;
 
 static long *start_run(uint8_t *message, long len, ChaCha20 c, int opt_n){
@@ -28,15 +32,12 @@ printf("Checking if message and result are the same\n");
     for (long i = 0; i < len; i++) {
         if(message[i] != dec_result[i]) {
             cout << "\033[31m\033[1mError: message and result are not the same\033[0m" << endl;
-            free(enc_result);
-            free(dec_result);
+            free(message);
             exit(1);
         }
     }
 #endif
 
-    free(enc_result);
-    free(dec_result);
     return times;
 }
 
@@ -102,62 +103,47 @@ static bool multiple_run(const char *argv[], ChaCha20 c, int n_opt){
             fprintf(fp, "\n");
 
             int n = 0;
+
+            int thread_runs = (int)log2(n_threads)+1;
+            long *gen_time = (long *) malloc(sizeof(long) * N_RUNS * thread_runs);
             while (n < N_RUNS){
 
                 printf("\rRun %d/%d", n+1, N_RUNS);
                 fflush(stdout);
 
                 for(int k = 1; k <= n_threads; k*=2){
-                    omp_set_num_threads(k);
                     uint8_t *message = (uint8_t *) malloc(sizeof(uint8_t) * start_len);
                     
-                    // use less rand() calls since it's slow
-                    int r = rand();
-                    int b = rand();
-                    for (long i = 0; i < start_len; i+=32) {
-                        int v = i + 16;
-                        r += 1234;
-                        message[i] = r && 0xFF;
-                        message[i+1] = (r >> 8) && 0xFF;
-                        message[i+2] = (r >> 16) && 0xFF;
-                        message[i+3] = (r >> 24) && 0xFF;
-                        r -= 111; 
-                        message[i+4] = r && 0xFF;
-                        message[i+5] = (r >> 8) && 0xFF;
-                        message[i+6] = (r >> 16) && 0xFF;
-                        message[i+7] = (r >> 24) && 0xFF;
-                        r += 12;
-                        message[i + 8]= r && 0xFF;
-                        message[i + 9] = (r >> 8) && 0xFF;
-                        message[i + 10] = (r >> 16) && 0xFF;
-                        message[i + 11] = (r >> 24) && 0xFF;
-                        r -= 432;                        
-                        message[i + 12] = r && 0xFF;
-                        message[i + 13] = (r >> 8) && 0xFF;
-                        message[i + 14] = (r >> 16) && 0xFF;
-                        message[i + 15] = (r >> 24) && 0xFF;
-
-                        b += 1234;
-                        message[v] = b && 0xFF;
-                        message[v+1] = (b >> 8) && 0xFF;
-                        message[v+2] = (b >> 16) && 0xFF;
-                        message[v+3] = (b >> 24) && 0xFF;
-                        b -= 111; 
-                        message[v+4] = b && 0xFF;
-                        message[v+5] = (b >> 8) && 0xFF;
-                        message[v+6] = (b >> 16) && 0xFF;
-                        message[v+7] = (b >> 24) && 0xFF;
-                        b += 12;
-                        message[v + 8]= b && 0xFF;
-                        message[v + 9] = (b >> 8) && 0xFF;
-                        message[v + 10] = (b >> 16) && 0xFF;
-                        message[v + 11] = (b >> 24) && 0xFF;
-                        b -= 432;                        
-                        message[v + 12] = b && 0xFF;
-                        message[v + 13] = (b >> 8) && 0xFF;
-                        message[v + 14] = (b >> 16) && 0xFF;
-                        message[v + 15] = (b >> 24) && 0xFF;
+                    omp_set_num_threads(n_threads);
+                    auto start = std::chrono::high_resolution_clock::now();
+                    #pragma omp parallel for
+                    for (long t = 0; t < (long)start_len/1024; t+=1){
+                        int r = rand();
+                        int b = rand();
+                        for (long i = t*1024; i < t*1024 + 1024; i+=32) {
+                            long v = i + 16;
+                            r += 1234;
+                            *(message + i) = r;
+                            b += 1234;
+                            *(message + v) = b;
+                            r -= 111; 
+                            *(message + i + 4) = r;
+                            b -= 111;
+                            *(message + v + 4) = b;
+                            r += 12;
+                            *(message + i + 8) = r;
+                            b += 12;
+                            *(message + v + 8) = b;
+                            r -= 432;                        
+                            *(message + i + 12) = r;
+                            b -= 432;                  
+                            *(message + v + 12) = b;
+                        }
                     }
+                    auto end = std::chrono::high_resolution_clock::now();
+                    gen_time[n*thread_runs + (int)log2(k)] = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
+
+                    omp_set_num_threads(k);
 
                     long *time = start_run(message, start_len, c, p);
                     // cout << "Enc Time: " << time[0] << " microseconds" << endl;
@@ -173,7 +159,15 @@ static bool multiple_run(const char *argv[], ChaCha20 c, int n_opt){
                 n++;
                 fprintf(fp, "\n");
             }
-            printf("\n");
+            long sum = 0;
+            for(int k = 0; k < N_RUNS; k++){
+                for(int i = 0; i < thread_runs; i++){
+                    sum += gen_time[k*thread_runs + i];
+                }
+            }
+            printf("\nAvarage gen time: %ld", sum/N_RUNS/thread_runs);
+            free(gen_time);
+            printf("\n\n");
             start_len *= 4;
             fclose(fp);
         }
@@ -209,7 +203,7 @@ int main(int argc, char const *argv[])
             from_file(argv);
             break;
         case 2:
-            multiple_run(argv, chacha, 2);
+            multiple_run(argv, chacha, OPT_L);
             break;
         case 1:
             cout << "No arguments just runs the test" << endl;
