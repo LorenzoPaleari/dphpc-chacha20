@@ -76,11 +76,12 @@ static bool from_file(char const *argv[]){
 
 static bool multiple_run(const char *argv[], ChaCha20 c, struct chacha20_context *original, int n_opt){
     long max_len_size = atol(argv[1]);
+    int max_th = omp_get_max_threads();
     
     for (int p = -1; p < n_opt; p++){
 
         // SET THE NUMBER OF THREAD TO USE - IF -1 (ORIGINAL) -> WE JUST RUN 1 THREAD
-        int n_threads = omp_get_max_threads();
+        int n_threads = max_th;
         if(p == -1){
             n_threads = 1;
             cout << "Running original version" << endl;
@@ -120,7 +121,7 @@ static bool multiple_run(const char *argv[], ChaCha20 c, struct chacha20_context
                 for(int k = 1; k <= n_threads; k*=2){
                     uint8_t *message = (uint8_t *) malloc(sizeof(uint8_t) * start_len);
                     
-                    omp_set_num_threads(n_threads);
+                    omp_set_num_threads(max_th);
                     auto start = std::chrono::high_resolution_clock::now();
                     #pragma omp parallel for
                     for (long t = 0; t < (long)start_len/1024; t+=1){
