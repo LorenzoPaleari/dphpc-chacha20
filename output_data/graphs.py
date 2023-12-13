@@ -33,9 +33,11 @@ for file in files:
         size = file.split('_')[0]
         opt_num = file.split('_')[1][3]
         
-        if opt_num == '-1': # ORIGINAL!
+        if opt_num == '-': # ORIGINAL!
             arr_enc = []
             arr_dec = []
+            f.readline()
+            lines = f.readlines()
             for l in lines:
                 l = l.strip()
                 enc, dec = l.split('/')
@@ -87,7 +89,6 @@ for opt in optimizations:
     
     opt_speedup_enc[opt] = speedup_enc
     opt_speedup_dec[opt] = speedup_dec
-
 
 
 for opt in optimizations:
