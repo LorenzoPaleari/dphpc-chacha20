@@ -27,7 +27,7 @@ TestClient::TestClient(){
 }
 
 bool TestClient::runTest(int i, bool (*tf)(int)){
-    #define OPT_L 2
+    #define OPT_L 3
 
     bool result = true;
 
@@ -56,8 +56,30 @@ bool chacha20_rfc(int opt){
     ChaCha20 block = ChaCha20(key,nonce);
 
     uint8_t result[64];
-    if(opt > 1) block.block_quarter_round_opt1(result, 1);
-    else block.block_quarter_round(result, 1);
+    uint8_t result_vect [512];
+    uint32_t temp[16];
+
+    //MAKE A COPY OF THE STATE, SO WE CAN USE IT LATER - also equal for every block
+    for (int i = 0; i < 16; i++){
+        temp[i] = block.state[i];
+    }
+
+    block.quarter_round_opt1(&temp[1], &temp[5], &temp[9], &temp[13]);
+    block.quarter_round_opt1(&temp[2], &temp[6], &temp[10], &temp[14]);
+    block.quarter_round_opt1(&temp[3], &temp[7], &temp[11], &temp[15]);
+    switch (opt){
+        case 0:
+            block.block_quarter_round(result, 1);
+            break;
+        case 1:
+            block.block_quarter_round_opt1(result,1,temp);
+            break;
+        case 2:
+            block.block_quarter_round_vect(result_vect,1);
+            break;
+        default:
+            break;
+    }
 
     uint8_t expected_result[] = {
        0x10, 0xf1, 0xe7, 0xe4, 0xd1, 0x3b, 0x59, 0x15, 0x50, 0x0f, 0xdd, 0x1f, 0xa3, 0x20, 0x71, 0xc4,
@@ -65,6 +87,15 @@ bool chacha20_rfc(int opt){
        0xd2, 0x82, 0x64, 0x46, 0x07, 0x9f, 0xaa, 0x09, 0x14, 0xc2, 0xd7, 0x05, 0xd9, 0x8b, 0x02, 0xa2,
        0xb5, 0x12, 0x9c, 0xd1, 0xde, 0x16, 0x4e, 0xb9, 0xcb, 0xd0, 0x83, 0xe8, 0xa2, 0x50, 0x3c, 0x4e
     };
+
+    if (opt == 2){
+        for (int i = 0; i < 64; i++){
+            if (result_vect[i] != expected_result[i]){
+                return false;
+            }
+        }
+        return true;
+    }
 
     for (int i = 0; i < 64; i++){
         if (result[i] != expected_result[i]){

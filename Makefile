@@ -4,7 +4,7 @@ F_POS := input_data/
 FILES := ./src/chacha.cpp main.cpp ./src/test_client.cpp
 FILE_CHACHA := ./src/chacha.cpp
 FILE_CHACHA_O := ./src/chacha.o
-CXXFLAGS := -D $(UNAME) -D CHEC$(if $(findstring Y,$(CHECK)),K) -Wall -Wextra -Werror -pedantic -std=c++11 -ffast-math -O3 -march=native -fopenmp
+CXXFLAGS := -D $(UNAME) -D CHEC$(if $(findstring Y,$(CHECK)),K) -Wall -Wextra -pedantic -std=c++11 -ffast-math -O3 -mfma -mavx2 -mavx -march=native -fopenmp
 OBJS := $(FILES:.cpp=.o)
 VER ?= 0
 
@@ -17,7 +17,7 @@ endif
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS) $(INCLUDES)
+	$(CXX) $(CXXFLAGS) $(OBJS) -o $(TARGET) $(INCLUDES)
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@ $(INCLUDES)
