@@ -1,5 +1,6 @@
 #include "../include/test_client.hpp"
 #include "../include/chacha.hpp"
+#include "../src/original/chacha20.hpp"
 #include <string.h>
 #include <iostream>
 using namespace std;
@@ -10,6 +11,7 @@ TestClient::TestClient(){
         chacha20_rfc,
         chacha20_rfc_text,
         chacha20_enc_dec,
+        chacha20_large_enc,
         0x0
     };
 
@@ -30,16 +32,17 @@ TestClient::TestClient(){
 bool TestClient::runTest(int i, bool (*tf)(int)){
 
     bool result = true;
+    int j;
 
-    for(int j = 0; j < OPT_L; j++){
+    for(j = 0; j < OPT_L; j++){
         result = tf(j);
         if (!result) break;
     }
 
     if(result) cout << "\033[32mTest " << i+1 << " passed\033[0m" << endl;
-    else cout << "\033[31mTest " << i+1 << " failed\033[0m" << endl;
+    else cout << "\033[31mTest " << i+1 << " failed (" <<  j << ")\033[0m" << endl;
 
-    return true;
+    return result;
 }
 
 bool chacha20_rfc(int opt){
@@ -75,7 +78,14 @@ bool chacha20_rfc(int opt){
             block.block_quarter_round_opt1(result,1,temp);
             break;
         case 2:
-            block.block_quarter_round_vect(result_vect,1);
+            __m256i temp_2[16];
+            for (int i = 0; i < 16; i++){
+                temp_2[i] = _mm256_set1_epi32(block.state[i]);
+            }
+            block.quarter_round_vect(&temp_2[1], &temp_2[5], &temp_2[9], &temp_2[13]);
+            block.quarter_round_vect(&temp_2[2], &temp_2[6], &temp_2[10], &temp_2[14]);
+            block.quarter_round_vect(&temp_2[3], &temp_2[7], &temp_2[11], &temp_2[15]);
+            block.block_quarter_round_vect(result_vect,1, temp_2, _mm256_set_epi32(7,6,5,4,3,2,1,0));
             break;
         default:
             break;
@@ -160,4 +170,37 @@ bool chacha20_enc_dec(int opt){
     bool res = strcmp((char *)decrypted, input2) == 0;
     free(input2);
     return res;
+}
+
+bool chacha20_large_enc(int opt){
+    // LARGE INPUT
+    char input[] = "mauris sit amet massa vitae tortor condimentum lacinia quis vel eros donec ac odio tempor orci dapibus ultrices in iaculis nunc sed augue lacus viverra vitae congue eu consequat ac felis donec et odio pellentesque diam volutpat commodo sed egestas egestas fringilla phasellus faucibus scelerisque eleifend donec pretium vulputate sapien nec sagittis aliquam malesuada bibendum arcu vitae elementum curabitur vitae nunc sed velit dignissim sodales ut eu sem integer vitae justo eget magna fermentum iaculis eu non diam phasellus vestibulum lorem sed risus ultricies tristique nulla aliquet enim tortor at auctor urna nunc id cursus metus aliquam eleifend mi in nulla posuere sollicitudin aliquam ultrices sagittis orci a scelerisque purus semper eget duis at tellus at urna condimentum mattis pellentesque id nibh tortor id aliquet lectus proin nibh nisl condimentum id venenatis a condimentum vitae sapien pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas sed tempus urna et pharetra pharetra massa massa ultricies mi quis hendrerit dolor magna eget est lorem ipsum dolor sit amet consectetur adipiscing elit pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas integer eget aliquet nibh praesent tristique magna sit amet purus gravida quis blandit turpis cursus in hac habitasse platea dictumst quisque sagittis purus sit amet volutpat consequat mauris nunc congue nisi vitae suscipit tellus mauris a diam maecenas sed enim ut sem viverra aliquet eget sit amet tellus cras adipiscing enim eu turpis egestas pretium aenean pharetra";
+    
+    uint8_t key[32];
+
+    for (int i = 0; i < 32; i++){
+        key[i] = i;
+    }
+    uint8_t nonce[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x4a,0x00,0x00,0x00,0x00};
+    ChaCha20 block = ChaCha20(key,nonce);
+
+    uint8_t *copy = (uint8_t *) malloc(strlen(input)+1);
+    strcpy((char *)copy, input);
+
+    struct chacha20_context original;
+    chacha20_init_context(&original, key, nonce, 1);
+    chacha20_xor(&original, (uint8_t *)copy, strlen(input)+1);
+
+    block.encryptOpt(opt, (uint8_t *)input, strlen(input)+1);
+
+    //check if input is equal to copy
+    for(int i = 0; i < strlen(input)+1; i++){
+        if ((uint8_t) input[i] != copy[i]){
+            cout << "Input and copy are different at index " << i << endl;
+            return false;
+        }
+    }
+
+
+    return true;
 }

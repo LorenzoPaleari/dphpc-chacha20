@@ -1,7 +1,7 @@
 UNAME := $(shell uname)
 TARGET := bin
 F_POS := input_data/
-FILES := ./src/chacha.cpp main.cpp ./src/test_client.cpp
+FILES := ./src/original/chacha20.cpp ./src/chacha.cpp main.cpp ./src/test_client.cpp
 FILE_CHACHA := ./src/chacha.cpp
 FILE_CHACHA_O := ./src/chacha.o
 CXXFLAGS := -D $(UNAME) -D CHEC$(if $(findstring Y,$(CHECK)),K) -Wall -Wextra -pedantic -std=c++11 -ffast-math -O3 -mfma -mavx2 -mavx -march=native -fopenmp

@@ -8,35 +8,33 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <math.h>
+#include "src/original/chacha20.hpp"
 #define N_RUNS 10
-#define OPT_L 2
+#define OPT_L 3
 using namespace std;
 
-static long *start_run(uint8_t *message, long len, ChaCha20 c, int opt_n){
+static long *start_run(uint8_t *message, long len, ChaCha20 c, int opt_n, struct chacha20_context *original){
     long *times = (long *) malloc(sizeof(long) * 2);
+
     auto start = std::chrono::high_resolution_clock::now();
-    uint8_t *enc_result = c.encryptOpt(opt_n, message, len);
+    if(opt_n == -1){
+        chacha20_xor(original, message, len);
+    } else {
+        c.encryptOpt(opt_n, message, len);
+    }
     auto end = std::chrono::high_resolution_clock::now();
     times[0] = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
     // cout << "Enc Time: " << enc_time << " microseconds" << endl;
     
     start = std::chrono::high_resolution_clock::now();
-    uint8_t *dec_result = c.decryptOpt(opt_n, enc_result, len);
+    if(opt_n == -1){
+        chacha20_xor(original, message, len);
+    } else {
+        c.decryptOpt(opt_n, message, len);
+    }
     end = std::chrono::high_resolution_clock::now();
     times[1] = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
     // cout << "Dec Time: " << last_time << " microseconds" << endl;
-
-#ifdef CHECK
-printf("Checking if message and result are the same\n");
-#pragma omp parallel for
-    for (long i = 0; i < len; i++) {
-        if(message[i] != dec_result[i]) {
-            cout << "\033[31m\033[1mError: message and result are not the same\033[0m" << endl;
-            free(message);
-            exit(1);
-        }
-    }
-#endif
 
     return times;
 }
@@ -66,7 +64,7 @@ static bool from_file(char const *argv[]){
 
     fread(message, sizeof(uint8_t), len, fp);
     cout << "Read file of size " << len << " bytes" << endl;
-    long *time = start_run(message, len, chacha, opt);
+    long *time = start_run(message, len, chacha, opt, NULL);
     cout << "Enc Time: " << time[0] << " microseconds" << endl;
     cout << "Dec Time: " << time[1] << " microseconds" << endl;
 
@@ -76,11 +74,17 @@ static bool from_file(char const *argv[]){
     return true;
 }
 
-static bool multiple_run(const char *argv[], ChaCha20 c, int n_opt){
+static bool multiple_run(const char *argv[], ChaCha20 c, struct chacha20_context *original, int n_opt){
     long max_len_size = atol(argv[1]);
-    int n_threads = omp_get_max_threads();
     
-    for (int p = 0; p < n_opt; p++){
+    for (int p = -1; p < n_opt; p++){
+
+        // SET THE NUMBER OF THREAD TO USE - IF -1 (ORIGINAL) -> WE JUST RUN 1 THREAD
+        int n_threads = omp_get_max_threads();
+        if(p == -1){
+            n_threads = 1;
+            cout << "Running original version" << endl;
+        }
 
         long start_len = 1024; // 1 KB
         while(start_len <= max_len_size) {
@@ -107,6 +111,8 @@ static bool multiple_run(const char *argv[], ChaCha20 c, int n_opt){
             int thread_runs = (int)log2(n_threads)+1;
             long *gen_time = (long *) malloc(sizeof(long) * N_RUNS * thread_runs);
             while (n < N_RUNS){
+
+                if(p == -1) chacha20_block_set_counter(original, 1);
 
                 printf("\rRun %d/%d", n+1, N_RUNS);
                 fflush(stdout);
@@ -145,7 +151,7 @@ static bool multiple_run(const char *argv[], ChaCha20 c, int n_opt){
 
                     omp_set_num_threads(k);
 
-                    long *time = start_run(message, start_len, c, p);
+                    long *time = start_run(message, start_len, c, p, original);
                     // cout << "Enc Time: " << time[0] << " microseconds" << endl;
                     // cout << "Dec Time: " << time[1] << " microseconds" << endl;
 
@@ -197,13 +203,15 @@ int main(int argc, char const *argv[])
         nonce[i] = rand() % 256;
 
     ChaCha20 chacha = ChaCha20(key, nonce);
+    struct chacha20_context original;
+    chacha20_init_context(&original, key, nonce, 1);
 
     switch(argc){
         case 4:
             from_file(argv);
             break;
         case 2:
-            multiple_run(argv, chacha, OPT_L);
+            multiple_run(argv, chacha, &original, OPT_L);
             break;
         case 1:
             cout << "No arguments just runs the test" << endl;
