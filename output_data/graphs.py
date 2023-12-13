@@ -22,6 +22,7 @@ def format_size(size):
         return f"{size / 1024**3} GB"
 
 cores_label = []
+original_dict = {}
 
 files = os.listdir('./output_data/')
 for file in files:
@@ -31,6 +32,18 @@ for file in files:
     with open('./output_data/' + file, 'r') as f:
         size = file.split('_')[0]
         opt_num = file.split('_')[1][3]
+        
+        if opt_num == '-1': # ORIGINAL!
+            arr_enc = []
+            arr_dec = []
+            for l in lines:
+                l = l.strip()
+                enc, dec = l.split('/')
+                arr_enc.append(float(enc)/1000000)
+                arr_dec.append(float(dec)/1000000)
+            original_dict[size] = { 'enc': sum(arr_enc) / len(arr_enc), 'dec': sum(arr_dec) / len(arr_dec) }
+            continue
+
         cores_label = f.readline().strip().split(',')
         lines = f.readlines()
 
@@ -82,7 +95,7 @@ for opt in optimizations:
     # Plot for encryption
     plt.figure(figsize=(10, 6))
     for i in range(len(graph_array[opt][sizes[0]]['enc'])):  # number of threads
-        plt.plot([format_size(size) for size in sizes], [graph_array[opt][size]['enc'][i] for size in sizes], marker='o', label=f'{cores_label[i]} Threads ({opt_speedup_enc[opt][i]:.2f}x)')
+        plt.plot([format_size(size) for size in sizes], [graph_array[opt][size]['enc'][i] for size in sizes], marker='o', label=f'{cores_label[i]} Threads ({opt_speedup_enc[opt][i]:.2f}x) - {graph_array[opt][sizes[-1]]["enc"][i]}')
     plt.xlabel('Size of Input')
     plt.ylabel('Time (s)')
     plt.title('Encryption Time vs Size of Input for Different Threads')
@@ -100,3 +113,20 @@ for opt in optimizations:
     plt.legend()
     plt.grid(True)
     plt.savefig('./output_data/dec_time_opt'+ opt +'.png')
+
+
+# Display single thread speedup vs original
+lbl = ["enc", "dec"]
+for l in lbl:
+    plt.figure(figsize=(10, 6))
+    for opt in optimizations:
+        sizes = sorted(graph_array[opt].keys(), key=int)  # sort the sizes
+        #plot the first element of each size
+        plt.plot([format_size(size) for size in sizes], [graph_array[opt][size][l][0] for size in sizes], marker='o', label=f'Optimization {opt}')
+    plt.plot([format_size(size) for size in sizes], [original_dict[size][l] for size in sizes], marker='o', label=f'Original')
+    plt.xlabel('Size of Input')
+    plt.ylabel('Time (s)')
+    plt.title("Original vs Optimized Encryption Time for Single Thread")
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(f'./output_data/{l}_time_single.png')
