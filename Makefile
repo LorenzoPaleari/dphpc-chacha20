@@ -28,10 +28,12 @@ s_run: $(TARGET) check-env check-files
 m_run: $(TARGET) check-env
 	./$(TARGET) $(LEN)
 	@if [ $$? -eq 0 ]; then \
-	    printf "\n\033[1;32mRun ended without errors.\033[0m\n\nTo plot result please do:\n\033[1mpython3 ./output_data/graphs.py\033[0m\n\n"; \
+	    printf "\n\033[1;32mRun ended without errors.\033[0m\033[1m\n\nPlotting Results..."; \
 	else \
-	    printf "\033[1;31mError: The run failed.\033[0m\n"; \
+	    printf "\033[1;31mError: The run failed.\033[0m\n"; exit 1; \
 	fi
+	@python3 -m venv venv; source venv/bin/activate; python3 ./output_data/graphs.py; deactivate;
+	@printf "\r\033[1;32mResults Plotted.    \033[0m\n\n"
 
 callgrind: $(TARGET) check-env check-files
 	mkdir -p callgrind
@@ -53,10 +55,14 @@ clean:
 	rm -fR bin $(OBJS)
 
 clean-all: clean
-	rm -fR input_data
+	rm -fR input_data bin.dSYM
 
 check-env:
-	@[ -n "$(OMP_NUM_THREADS)" ]; printf "\033[1;32mThread number set up correctly.\033[0m\n\n" || (printf "\033[1;33mERROR\033[0m\n\033[33mThe number of threads is not set. Please do: \n\nsource num_thread_definer.sh\033[0m\n\n")
+	@if [ -n "$(OMP_NUM_THREADS)" ]; then \
+		printf "\033[1;32mThread number set up correctly.\033[0m\n\n"; \
+	else \
+		printf "\033[1;33mERROR\033[0m\n\033[33mThe number of threads is not set. Please do: \n\nsource num_thread_definer.sh\033[0m\n\n"; \
+	fi
 
 check-files:
 	@MISSING_FILE=$(if $(wildcard $(F_POS)input_$(LEN).txt),,$(LEN)); \
