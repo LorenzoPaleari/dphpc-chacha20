@@ -19,6 +19,13 @@ make m_run LEN=67108864
 //For example this last command will test 1024 4096 16384 ... 67108864
 ```
 
+#### Valgrind
+It will run s_run with valgrind
+```
+make valgrind LEN=YOUR_DATA_SIZE VER=OPTIMIZATION_VERSION (default to 0)
+make valgrind LEN=4096 VER=1
+```
+
 #### Callgrind (Valgrind tool)
 It will run s_run with callgrind
 ```
@@ -41,7 +48,7 @@ make clean-all //Delete also input files
 ```
 
 #### Others
-This commands check if input data is present and if the number of threads has been setted correctly. (This commands are runned by s_run and m_run).
+This commands check if input data is present and if the number of threads has been setted correctly. (This commands are runned by s_run, m_run, callgrind and valgrind).
 ```
 make check-env
 make check-files
