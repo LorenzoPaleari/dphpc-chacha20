@@ -13,7 +13,7 @@
 #define OPT_L 3
 using namespace std;
 
-static long *start_run(uint8_t *message, long len, ChaCha20 c, int opt_n, struct chacha20_context *original){
+static long *start_run(uint8_t *message, long len, ChaCha20 c, int opt_n, struct chacha20_context *original, bool decrypt = false){
     long *times = (long *) malloc(sizeof(long) * 2);
 
     auto start = std::chrono::high_resolution_clock::now();
@@ -24,17 +24,17 @@ static long *start_run(uint8_t *message, long len, ChaCha20 c, int opt_n, struct
     }
     auto end = std::chrono::high_resolution_clock::now();
     times[0] = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
-    // cout << "Enc Time: " << enc_time << " microseconds" << endl;
     
-    start = std::chrono::high_resolution_clock::now();
-    if(opt_n == -1){
-        chacha20_xor(original, message, len);
-    } else {
-        c.decryptOpt(opt_n, message, len);
+    if (decrypt){
+        start = std::chrono::high_resolution_clock::now();
+        if(opt_n == -1){
+            chacha20_xor(original, message, len);
+        } else {
+            c.decryptOpt(opt_n, message, len);
+        }
+        end = std::chrono::high_resolution_clock::now();
+        times[1] = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
     }
-    end = std::chrono::high_resolution_clock::now();
-    times[1] = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
-    // cout << "Dec Time: " << last_time << " microseconds" << endl;
 
     return times;
 }
@@ -45,13 +45,19 @@ static bool from_file(char const *argv[]){
     int opt = atoi(argv[3]);
     uint8_t *message = (uint8_t *) malloc(sizeof(uint8_t) * len);
 
-    // Read file
+    // Open file
     FILE *fp = fopen(argv[2], "r");
     if(fp == NULL) {
         cout << "Error opening file" << endl;
         return false;
     }
 
+    // Read file into message
+    fread(message, sizeof(uint8_t), len, fp);
+    cout << "Read file of size " << len << " bytes" << endl;
+    fclose(fp);
+
+    //Generate random key and nonce
     uint8_t key[32];
     uint8_t nonce[12];
     for (int i = 0; i < 32; i++) 
@@ -60,15 +66,13 @@ static bool from_file(char const *argv[]){
     for (int i = 0; i < 12; i++) 
         nonce[i] = rand() % 256;
 
+    //Init ChaCha20 - Creation of state
     ChaCha20 chacha = ChaCha20(key, nonce);
 
-    fread(message, sizeof(uint8_t), len, fp);
-    cout << "Read file of size " << len << " bytes" << endl;
-    long *time = start_run(message, len, chacha, opt, NULL);
+    long *time = start_run(message, len, chacha, opt, NULL, true);
     cout << "Enc Time: " << time[0] << " microseconds" << endl;
     cout << "Dec Time: " << time[1] << " microseconds" << endl;
 
-    fclose(fp);
     free(time);
     free(message);
     return true;
@@ -84,7 +88,9 @@ static bool multiple_run(const char *argv[], ChaCha20 c, struct chacha20_context
         int n_threads = max_th;
         if(p == -1){
             n_threads = 1;
-            cout << "Running original version" << endl;
+            cout << "\n\033[32;1mRunning original version\033[0m\n" << endl;
+        } else {
+            cout << "\n\033[32;1mRunning optimization " << p << "\033[0m\n"<< endl;
         }
 
         long start_len = 1024; // 1 KB
@@ -113,50 +119,55 @@ static bool multiple_run(const char *argv[], ChaCha20 c, struct chacha20_context
             long *gen_time = (long *) malloc(sizeof(long) * N_RUNS * thread_runs);
             while (n < N_RUNS){
 
+                // Initialize the counter for original version
                 if(p == -1) chacha20_block_set_counter(original, 1);
 
-                printf("\rRun %d/%d", n+1, N_RUNS);
-                fflush(stdout);
-
                 for(int k = 1; k <= n_threads; k*=2){
-                    uint8_t *message = (uint8_t *) malloc(sizeof(uint8_t) * start_len);
+                    uint32_t *message = (uint32_t *) malloc(sizeof(uint32_t) * (start_len / 4));
                     
+                    printf("\rRun %d/%d - %d threads - Generating data...", n+1, N_RUNS, k);
+                    fflush(stdout);
+
+                    // Generate random message with maximum threads available
                     omp_set_num_threads(max_th);
                     auto start = std::chrono::high_resolution_clock::now();
                     #pragma omp parallel for
                     for (long t = 0; t < (long)start_len/1024; t+=1){
                         int r = rand();
                         int b = rand();
-                        for (long i = t*1024; i < t*1024 + 1024; i+=32) {
-                            long v = i + 16;
-                            r += 1234;
+                        for (long i = t*256; i < t*256 + 256; i+=8) {
+                            long v = i + 4;
+                            r ^= 305419896;
                             *(message + i) = r;
-                            b += 1234;
+                            b ^= 305419896;
                             *(message + v) = b;
-                            r -= 111; 
-                            *(message + i + 4) = r;
-                            b -= 111;
-                            *(message + v + 4) = b;
-                            r += 12;
-                            *(message + i + 8) = r;
-                            b += 12;
-                            *(message + v + 8) = b;
-                            r -= 432;                        
-                            *(message + i + 12) = r;
-                            b -= 432;                  
-                            *(message + v + 12) = b;
+                            r ^= 696739139; 
+                            *(message + i + 1) = r;
+                            b ^= 696739139;
+                            *(message + v + 1) = b;
+                            r ^= 525096261;
+                            *(message + i + 2) = r;
+                            b ^= 525096261;
+                            *(message + v + 2) = b;
+                            r ^= 123456789;                        
+                            *(message + i + 3) = r;
+                            b ^= 123456789;                  
+                            *(message + v + 3) = b;
+                            r += 834567890;
+                            b += 834567890;
                         }
                     }
                     auto end = std::chrono::high_resolution_clock::now();
                     gen_time[n*thread_runs + (int)log2(k)] = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
 
+                    printf("\rCleaning Line                                           ");
+                    printf("\rRun %d/%d - %d threads", n+1, N_RUNS, k);
+                    fflush(stdout);
+
                     omp_set_num_threads(k);
+                    long *time = start_run((uint8_t *)message, start_len, c, p, original);
 
-                    long *time = start_run(message, start_len, c, p, original);
-                    // cout << "Enc Time: " << time[0] << " microseconds" << endl;
-                    // cout << "Dec Time: " << time[1] << " microseconds" << endl;
-
-                    fprintf(fp, "%ld/%ld", time[0], time[1]);
+                    fprintf(fp, "%ld", time[0]);
                     if (k*2 <= n_threads) {
                         fprintf(fp, ",");
                     }
@@ -166,6 +177,10 @@ static bool multiple_run(const char *argv[], ChaCha20 c, struct chacha20_context
                 n++;
                 fprintf(fp, "\n");
             }
+            printf("\rRun %d/%d - \033[32mCompleted\033[0m", N_RUNS, N_RUNS);
+            fflush(stdout);
+
+            // Avarage data generation time
             long sum = 0;
             for(int k = 0; k < N_RUNS; k++){
                 for(int i = 0; i < thread_runs; i++){
@@ -173,10 +188,12 @@ static bool multiple_run(const char *argv[], ChaCha20 c, struct chacha20_context
                 }
             }
             printf("\nAvarage gen time: %ld", sum/N_RUNS/thread_runs);
-            free(gen_time);
             printf("\n\n");
-            start_len *= 4;
+
+            free(gen_time);
             fclose(fp);
+
+            start_len *= 4;
         }
     }
 

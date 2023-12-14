@@ -14,7 +14,6 @@ class ChaCha20 {
         void setCounter(uint32_t counter);
         void block_quarter_round(uint8_t result[64], uint32_t counter);
         uint8_t *encrypt(uint8_t *input, long len);
-        uint8_t *decrypt(uint8_t *input, long len);
         void encrypt_single_block(uint8_t *input, uint32_t counter);
 
         uint8_t *encryptOpt(int opt_num, uint8_t *input, long len);

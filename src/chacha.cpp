@@ -96,10 +96,6 @@ void ChaCha20::encrypt_single_block(uint8_t *input, uint32_t counter){
 
 }
 
-uint8_t  *ChaCha20::decrypt(uint8_t *input, long len){
-    return this->encrypt(input, len);
-}
-
 uint32_t rotation_l32(uint32_t x, int n){
     return (x << n) | (x >> (32 - n));
 }
@@ -347,8 +343,8 @@ uint8_t *ChaCha20::encryptOpt(int opt_num, uint8_t *input, long len){
 }
 
 uint8_t *ChaCha20::decryptOpt(int opt_num, uint8_t *input, long len){
-    #define NDEC 1
-    method_function method_pointer[NDEC] = {&ChaCha20::decrypt};
+    #define NDEC 3
+    method_function method_pointer[NDEC] = {&ChaCha20::encrypt, &ChaCha20::encrypt_opt1, &ChaCha20::encrypt_opt2};
 
     method_function func;
     if(opt_num > NDEC){

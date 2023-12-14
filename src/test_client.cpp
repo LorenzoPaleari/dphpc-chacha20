@@ -60,21 +60,19 @@ bool chacha20_rfc(int opt){
 
     uint8_t result[64];
     uint8_t result_vect [512];
-    uint32_t temp[16];
 
-    //MAKE A COPY OF THE STATE, SO WE CAN USE IT LATER - also equal for every block
-    for (int i = 0; i < 16; i++){
-        temp[i] = block.state[i];
-    }
-
-    block.quarter_round_opt1(&temp[1], &temp[5], &temp[9], &temp[13]);
-    block.quarter_round_opt1(&temp[2], &temp[6], &temp[10], &temp[14]);
-    block.quarter_round_opt1(&temp[3], &temp[7], &temp[11], &temp[15]);
     switch (opt){
         case 0:
             block.block_quarter_round(result, 1);
             break;
         case 1:
+            uint32_t temp[16];
+            for (int i = 0; i < 16; i++){
+                temp[i] = block.state[i];
+            }
+            block.quarter_round_opt1(&temp[1], &temp[5], &temp[9], &temp[13]);
+            block.quarter_round_opt1(&temp[2], &temp[6], &temp[10], &temp[14]);
+            block.quarter_round_opt1(&temp[3], &temp[7], &temp[11], &temp[15]);
             block.block_quarter_round_opt1(result,1,temp);
             break;
         case 2:

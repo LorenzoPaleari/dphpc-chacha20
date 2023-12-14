@@ -35,33 +35,33 @@ for file in files:
         
         if opt_num == '-': # ORIGINAL!
             arr_enc = []
-            arr_dec = []
+            #arr_dec = []
             f.readline()
             lines = f.readlines()
             for l in lines:
                 l = l.strip()
-                enc, dec = l.split('/')
-                arr_enc.append(float(enc)/1000000)
-                arr_dec.append(float(dec)/1000000)
-            original_dict[size] = { 'enc': sum(arr_enc) / len(arr_enc), 'dec': sum(arr_dec) / len(arr_dec) }
+                #enc, dec = l.split('/')
+                arr_enc.append(float(l)/1000000)
+                #arr_dec.append(float(dec)/1000000)
+            original_dict[size] = { 'enc': sum(arr_enc) / len(arr_enc) } # , 'dec': sum(arr_dec) / len(arr_dec) }
             continue
 
         cores_label = f.readline().strip().split(',')
         lines = f.readlines()
 
         mean_dict = {}
-        mean_dict[size] = { 'enc': [], 'dec': []}
+        mean_dict[size] = { 'enc': [] } #, 'dec': []}
 
         for l in lines:
             l = l.strip()
             t_threads = l.split(',')
-            t_threads_enc = [ float(t.split('/')[0])/1000000 for t in t_threads ]
-            t_threads_dec = [ float(t.split('/')[1])/1000000 for t in t_threads ]
+            t_threads_enc = [ float(t)/1000000 for t in t_threads ]
+            # t_threads_dec = [ float(t.split('/')[1])/1000000 for t in t_threads ]
             mean_dict[size]['enc'].append(t_threads_enc)
-            mean_dict[size]['dec'].append(t_threads_dec)
+            # mean_dict[size]['dec'].append(t_threads_dec)
         
         mean_dict[size]['enc'] = [ sum(t) / len(t) for t in zip(*mean_dict[size]['enc']) ]
-        mean_dict[size]['dec'] = [ sum(t) / len(t) for t in zip(*mean_dict[size]['dec']) ]
+        # mean_dict[size]['dec'] = [ sum(t) / len(t) for t in zip(*mean_dict[size]['dec']) ]
         
         if opt_num not in graph_array:
             graph_array[opt_num] = {}
@@ -73,7 +73,7 @@ for file in files:
 
 optimizations = sorted(graph_array.keys(), key=int)  # sort the optimizations
 opt_speedup_enc = {}
-opt_speedup_dec = {}
+# opt_speedup_dec = {}
 
 #for all optimizations calculate the speedup
 for opt in optimizations:
@@ -81,14 +81,14 @@ for opt in optimizations:
     sizes = sorted(graph_array[opt].keys(), key=int)
 
     speedup_enc = []
-    speedup_dec = []
+    # speedup_dec = []
 
     for i in range(len(graph_array[opt][sizes[0]]['enc'])):  # number of threads
         speedup_enc.append(graph_array[opt][sizes[-1]]['enc'][0] / graph_array[opt][sizes[-1]]['enc'][i])
-        speedup_dec.append(graph_array[opt][sizes[-1]]['dec'][0] / graph_array[opt][sizes[-1]]['dec'][i]) 
+        # speedup_dec.append(graph_array[opt][sizes[-1]]['dec'][0] / graph_array[opt][sizes[-1]]['dec'][i]) 
     
     opt_speedup_enc[opt] = speedup_enc
-    opt_speedup_dec[opt] = speedup_dec
+    # opt_speedup_dec[opt] = speedup_dec
 
 
 for opt in optimizations:
@@ -105,19 +105,19 @@ for opt in optimizations:
     plt.savefig('./output_data/enc_time_opt'+ opt +'.png')
 
     # Plot for decryption
-    plt.figure(figsize=(10, 6))
-    for i in range(len(graph_array[opt][sizes[0]]['dec'])):  # number of threads
-        plt.plot([format_size(size) for size in sizes], [graph_array[opt][size]['dec'][i] for size in sizes], marker='o', label=f'{cores_label[i]} Threads ({opt_speedup_dec[opt][i]:.2f}x)')
-    plt.xlabel('Size of Input')
-    plt.ylabel('Time (s)')
-    plt.title('Decryption Time vs Size of Input for Different Threads')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig('./output_data/dec_time_opt'+ opt +'.png')
+    # plt.figure(figsize=(10, 6))
+    # for i in range(len(graph_array[opt][sizes[0]]['dec'])):  # number of threads
+    #     plt.plot([format_size(size) for size in sizes], [graph_array[opt][size]['dec'][i] for size in sizes], marker='o', label=f'{cores_label[i]} Threads ({opt_speedup_dec[opt][i]:.2f}x)')
+    # plt.xlabel('Size of Input')
+    # plt.ylabel('Time (s)')
+    # plt.title('Decryption Time vs Size of Input for Different Threads')
+    # plt.legend()
+    # plt.grid(True)
+    # plt.savefig('./output_data/dec_time_opt'+ opt +'.png')
 
 
 # Display single thread speedup vs original
-lbl = ["enc", "dec"]
+lbl = ["enc"] # , "dec"]
 for l in lbl:
     plt.figure(figsize=(10, 6))
     for opt in optimizations:
