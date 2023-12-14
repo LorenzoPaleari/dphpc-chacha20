@@ -263,7 +263,7 @@ __attribute__((always_inline)) void ChaCha20::block_quarter_round_vect(uint8_t r
     uint32_t temp_2[128];
     uint32_t temp_3[128];
     for (int i = 0; i < 16; i++){
-        _mm256_stream_si256((__m256i *)(temp_2 + (i<<3)), temp[i]);
+        _mm256_store_si256((__m256i *)(temp_2 + (i<<3)), temp[i]);
     }
     for (int i = 0; i < 128; i++){
         temp_3[(i<<4)%128 + (i>>3)] = temp_2[i];
