@@ -3,8 +3,11 @@
 #include "../src/original/chacha20.hpp"
 #include <string.h>
 #include <iostream>
+
 using namespace std;
-#define OPT_L 3
+
+#define OPT_L 4
+#define IS_BIG_ENDIAN (!*(unsigned char *)&(uint16_t){1})
 
 TestClient::TestClient(){
     bool (*fns[])(int) = {
@@ -83,7 +86,19 @@ bool chacha20_rfc(int opt){
             block.quarter_round_vect(&temp_2[1], &temp_2[5], &temp_2[9], &temp_2[13]);
             block.quarter_round_vect(&temp_2[2], &temp_2[6], &temp_2[10], &temp_2[14]);
             block.quarter_round_vect(&temp_2[3], &temp_2[7], &temp_2[11], &temp_2[15]);
-            block.block_quarter_round_vect(result_vect,1, temp_2, _mm256_set_epi32(7,6,5,4,3,2,1,0));
+            block.block_quarter_round_opt2(result_vect,1, temp_2, _mm256_set_epi32(7,6,5,4,3,2,1,0));
+            break;
+        case 3:
+            __m256i temp_3[16];
+            __m256i initial_state[16];
+            for (int i = 0; i < 16; i++){
+                temp_3[i] = _mm256_set1_epi32(block.state[i]);
+                initial_state[i] = temp_3[i];
+            }
+            block.quarter_round_vect(&temp_3[1], &temp_3[5], &temp_3[9], &temp_3[13]);
+            block.quarter_round_vect(&temp_3[2], &temp_3[6], &temp_3[10], &temp_3[14]);
+            block.quarter_round_vect(&temp_3[3], &temp_3[7], &temp_3[11], &temp_3[15]);
+            block.block_quarter_round_opt3_big_endian(result_vect,1, temp_3, _mm256_set_epi32(7,6,5,4,3,2,1,0), initial_state);
             break;
         default:
             break;
@@ -96,7 +111,7 @@ bool chacha20_rfc(int opt){
        0xb5, 0x12, 0x9c, 0xd1, 0xde, 0x16, 0x4e, 0xb9, 0xcb, 0xd0, 0x83, 0xe8, 0xa2, 0x50, 0x3c, 0x4e
     };
 
-    if (opt == 2){
+    if (opt > 1){
         for (int i = 0; i < 64; i++){
             if (result_vect[i] != expected_result[i]){
                 return false;
@@ -127,7 +142,7 @@ bool chacha20_rfc_text(int opt){
     uint8_t nonce[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x4a,0x00,0x00,0x00,0x00};
 
     ChaCha20 block = ChaCha20(key,nonce);
-    uint8_t *result = block.encryptOpt(opt, (uint8_t *)input, strlen(input));
+    block.encryptOpt(opt, (uint8_t *)input, strlen(input));
 
     uint8_t result_expected[] = {
         0x6e, 0x2e, 0x35, 0x9a, 0x25, 0x68, 0xf9, 0x80, 0x41, 0xba, 0x07, 0x28, 0xdd, 0x0d, 0x69, 0x81,
@@ -141,7 +156,7 @@ bool chacha20_rfc_text(int opt){
     };
 
     for (size_t i = 0; i < 114; i++){
-        if (result[i] != result_expected[i]){
+        if ((uint8_t)input[i] != result_expected[i]){
             return false;
         }
     }
@@ -163,17 +178,19 @@ bool chacha20_enc_dec(int opt){
     ChaCha20 block = ChaCha20(key,nonce);
 
     block.encryptOpt(opt, (uint8_t *)input, strlen(input)+1);
-    uint8_t *decrypted = block.decryptOpt(opt, (uint8_t *)input, strlen(input2)+1);
+    block.decryptOpt(opt, (uint8_t *)input, strlen(input2)+1);
 
-    bool res = strcmp((char *)decrypted, input2) == 0;
+    bool res = strcmp((char *)input, input2) == 0;
     free(input2);
     return res;
 }
 
 bool chacha20_large_enc(int opt){
     // LARGE INPUT
-    char input[] = "mauris sit amet massa vitae tortor condimentum lacinia quis vel eros donec ac odio tempor orci dapibus ultrices in iaculis nunc sed augue lacus viverra vitae congue eu consequat ac felis donec et odio pellentesque diam volutpat commodo sed egestas egestas fringilla phasellus faucibus scelerisque eleifend donec pretium vulputate sapien nec sagittis aliquam malesuada bibendum arcu vitae elementum curabitur vitae nunc sed velit dignissim sodales ut eu sem integer vitae justo eget magna fermentum iaculis eu non diam phasellus vestibulum lorem sed risus ultricies tristique nulla aliquet enim tortor at auctor urna nunc id cursus metus aliquam eleifend mi in nulla posuere sollicitudin aliquam ultrices sagittis orci a scelerisque purus semper eget duis at tellus at urna condimentum mattis pellentesque id nibh tortor id aliquet lectus proin nibh nisl condimentum id venenatis a condimentum vitae sapien pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas sed tempus urna et pharetra pharetra massa massa ultricies mi quis hendrerit dolor magna eget est lorem ipsum dolor sit amet consectetur adipiscing elit pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas integer eget aliquet nibh praesent tristique magna sit amet purus gravida quis blandit turpis cursus in hac habitasse platea dictumst quisque sagittis purus sit amet volutpat consequat mauris nunc congue nisi vitae suscipit tellus mauris a diam maecenas sed enim ut sem viverra aliquet eget sit amet tellus cras adipiscing enim eu turpis egestas pretium aenean pharetra";
-    
+    char input_text[] = "mauris sit amet massa vitae tortor condimentum lacinia quis vel eros donec ac odio tempor orci dapibus ultrices in iaculis nunc sed augue lacus viverra vitae congue eu consequat ac felis donec et odio pellentesque diam volutpat commodo sed egestas egestas fringilla phasellus faucibus scelerisque eleifend donec pretium vulputate sapien nec sagittis aliquam malesuada bibendum arcu vitae elementum curabitur vitae nunc sed velit dignissim sodales ut eu sem integer vitae justo eget magna fermentum iaculis eu non diam phasellus vestibulum lorem sed risus ultricies tristique nulla aliquet enim tortor at auctor urna nunc id cursus metus aliquam eleifend mi in nulla posuere sollicitudin aliquam ultrices sagittis orci a scelerisque purus semper eget duis at tellus at urna condimentum mattis pellentesque id nibh tortor id aliquet lectus proin nibh nisl condimentum id venenatis a condimentum vitae sapien pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas sed tempus urna et pharetra pharetra massa massa ultricies mi quis hendrerit dolor magna eget est lorem ipsum dolor sit amet consectetur adipiscing elit pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas integer eget aliquet nibh praesent tristique magna sit amet purus gravida quis blandit turpis cursus in hac habitasse platea dictumst quisque sagittis purus sit amet volutpat consequat mauris nunc congue nisi vitae suscipit tellus mauris a diam maecenas sed enim ut sem viverra aliquet eget sit amet tellus cras adipiscing enim eu turpis egestas pretium aenean pharetra";
+    uint8_t *input = (uint8_t *) aligned_alloc(32,(strlen(input_text)+32) & ~31);
+    strcpy((char *)input, input_text);
+
     uint8_t key[32];
 
     for (int i = 0; i < 32; i++){
@@ -182,17 +199,17 @@ bool chacha20_large_enc(int opt){
     uint8_t nonce[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x4a,0x00,0x00,0x00,0x00};
     ChaCha20 block = ChaCha20(key,nonce);
 
-    uint8_t *copy = (uint8_t *) malloc(strlen(input)+1);
-    strcpy((char *)copy, input);
+    uint8_t *copy = (uint8_t *) malloc(strlen(input_text)+1);
+    strcpy((char *)copy, input_text);
 
     struct chacha20_context original;
     chacha20_init_context(&original, key, nonce, 1);
-    chacha20_xor(&original, (uint8_t *)copy, strlen(input)+1);
+    chacha20_xor(&original, (uint8_t *)copy, strlen(input_text)+1);
 
-    block.encryptOpt(opt, (uint8_t *)input, strlen(input)+1);
+    block.encryptOpt(opt, (uint8_t *)input, strlen(input_text)+1);
 
     //check if input is equal to copy
-    for(int i = 0; i < strlen(input)+1; i++){
+    for(int i = 0; i < (int)strlen(input_text)+1; i++){
         if ((uint8_t) input[i] != copy[i]){
             cout << "Input and copy are different at index " << i << endl;
             return false;
