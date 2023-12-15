@@ -4,7 +4,7 @@ F_POS := input_data/
 FILES := ./src/original/chacha20.cpp ./src/chacha.cpp main.cpp ./src/test_client.cpp
 FILE_CHACHA := ./src/chacha.cpp
 FILE_CHACHA_O := ./src/chacha.o
-CXXFLAGS := -D $(UNAME) -D CHEC$(if $(findstring Y,$(CHECK)),K) -Wall -Wextra -pedantic -std=c++11 -ffast-math -O3 -mfma -mavx2 -mavx -march=native -fopenmp
+CXXFLAGS := -D $(UNAME) -Wall -Wextra -pedantic -std=c++11 -ffast-math -O3 -mfma -mavx2 -mavx -march=native -fopenmp
 OBJS := $(FILES:.cpp=.o)
 VER ?= 0
 
@@ -32,8 +32,12 @@ m_run: $(TARGET) check-env
 	else \
 	    printf "\033[1;31mError: The run failed.\033[0m\n"; exit 1; \
 	fi
-	@python3 -m venv venv; source venv/bin/activate; python3 ./output_data/graphs.py; deactivate;
-	@printf "\r\033[1;32mResults Plotted.    \033[0m\n\n"
+	@python3 -m venv venv; source venv/bin/activate; pip install --upgrade -q pip; pip install -q matplotlib; python3 ./output_data/graphs.py; deactivate;
+	@if [ $$? -eq 0 ]; then \
+	    printf "\r\033[1;32mResults Plotted.    \033[0m\n\n"; \
+	else \
+	    printf "\033[1;31mError plotting results\033[0m\n"; exit 1; \
+	fi
 
 callgrind: $(TARGET) check-env check-files
 	mkdir -p callgrind

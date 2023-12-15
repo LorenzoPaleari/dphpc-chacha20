@@ -9,8 +9,8 @@
 #include <fcntl.h>
 #include <math.h>
 #include "src/original/chacha20.hpp"
-#define N_RUNS 10
-#define OPT_L 3
+#define N_RUNS 20
+#define OPT_L 4
 using namespace std;
 
 static long *start_run(uint8_t *message, long len, ChaCha20 c, int opt_n, struct chacha20_context *original, bool decrypt = false){
@@ -43,7 +43,7 @@ static bool from_file(char const *argv[]){
     // atoi converts string to int, i need a long
     long len = atol(argv[1]);
     int opt = atoi(argv[3]);
-    uint8_t *message = (uint8_t *) malloc(sizeof(uint8_t) * len);
+    uint8_t *message = (uint8_t *) aligned_alloc(32, (sizeof(uint8_t) * len + 31) & ~31);
 
     // Open file
     FILE *fp = fopen(argv[2], "r");
@@ -123,7 +123,7 @@ static bool multiple_run(const char *argv[], ChaCha20 c, struct chacha20_context
                 if(p == -1) chacha20_block_set_counter(original, 1);
 
                 for(int k = 1; k <= n_threads; k*=2){
-                    uint32_t *message = (uint32_t *) malloc(sizeof(uint32_t) * (start_len / 4));
+                    uint32_t *message = (uint32_t *) aligned_alloc(32, (sizeof(uint32_t) * (start_len / 4) + 31) & ~31);
                     
                     printf("\rRun %d/%d - %d threads - Generating data...", n+1, N_RUNS, k);
                     fflush(stdout);
