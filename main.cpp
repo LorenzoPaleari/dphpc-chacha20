@@ -8,7 +8,6 @@
 #include <fcntl.h>
 #include <math.h>
 #include <sodium.h>
-#include "src/original/chacha20.hpp"
 
 #ifdef Darwin
 #include "/usr/local/opt/libomp/include/omp.h"
@@ -25,7 +24,7 @@ static long *start_run(uint8_t *message, long len, ChaCha20 c, int opt_n, uint8_
 
     auto start = std::chrono::high_resolution_clock::now();
     if(opt_n == -1){
-        crypto_stream_chacha20_ietf_xor_ic(message, message, len, key, 1, nonce);
+        crypto_stream_chacha20_ietf_xor_ic(message, message, len, nonce, 1, key);
     } else {
         c.encryptOpt(opt_n, message, len);
     }
@@ -35,7 +34,7 @@ static long *start_run(uint8_t *message, long len, ChaCha20 c, int opt_n, uint8_
     if (decrypt){
         start = std::chrono::high_resolution_clock::now();
         if(opt_n == -1){
-            crypto_stream_chacha20_ietf_xor_ic(message, message, len, key, 1, nonce);
+            crypto_stream_chacha20_ietf_xor_ic(message, message, len, nonce, 1, key);
         } else {
             c.decryptOpt(opt_n, message, len);
         }
@@ -85,6 +84,21 @@ static bool from_file(char const *argv[]){
     return true;
 }
 
+// Convert long to string and add B KB MB GB
+static char *parse_len(long len){
+    char *str = (char *) malloc(sizeof(char) * 14);
+    if(len < 1024){
+        sprintf(str, "%d B", (int)len);
+    } else if (len < 1024*1024){
+        sprintf(str, "%d KB", (int)(len/1024));
+    } else if (len < 1024*1024*1024){
+        sprintf(str, "%d MB", (int)(len/1024/1024));
+    } else {
+        sprintf(str, "%d GB", (int)(len/1024/1024/1024));
+    }
+    return str;
+}
+
 static bool multiple_run(const char *argv[], ChaCha20 c, int n_opt, uint8_t key[32], uint8_t nonce[12]){
     long max_len_size = atol(argv[1]);
     int max_th = omp_get_max_threads();
@@ -103,7 +117,7 @@ static bool multiple_run(const char *argv[], ChaCha20 c, int n_opt, uint8_t key[
         long start_len = 1024; // 1 KB
         while(start_len <= max_len_size) {
             // write to file output_data/{len}_out - create if not exists
-            cout << "Running with len: " << start_len << endl;
+            cout << "Running with len: " << parse_len(start_len) << endl;
             string file_name = "output_data/" + to_string(start_len) + "_opt" + to_string(p) + "_out";
             FILE *fp = fopen(file_name.c_str(), "w");
             if(fp == NULL) {
@@ -128,7 +142,11 @@ static bool multiple_run(const char *argv[], ChaCha20 c, int n_opt, uint8_t key[
                 
                 // Initialize the counter for original version
                 if(p == -1){
-                    sodium_init();
+                    int test = sodium_init();
+                    if(test == -1){
+                        cout << "Error initializing libsodium" << endl;
+                        return false;
+                    }
                 }
 
                 for(int k = 1; k <= n_threads; k*=2){

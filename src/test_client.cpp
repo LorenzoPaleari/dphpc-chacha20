@@ -1,8 +1,8 @@
 #include "../include/test_client.hpp"
 #include "../include/chacha.hpp"
-#include "../src/original/chacha20.hpp"
 #include <string.h>
 #include <iostream>
+#include <sodium.h>
 
 using namespace std;
 
@@ -197,8 +197,6 @@ bool chacha20_enc_dec(int opt){
 bool chacha20_large_enc(int opt){
     // LARGE INPUT
     char input_text[] = "mauris sit amet massa vitae tortor condimentum lacinia quis vel eros donec ac odio tempor orci dapibus ultrices in iaculis nunc sed augue lacus viverra vitae congue eu consequat ac felis donec et odio pellentesque diam volutpat commodo sed egestas egestas fringilla phasellus faucibus scelerisque eleifend donec pretium vulputate sapien nec sagittis aliquam malesuada bibendum arcu vitae elementum curabitur vitae nunc sed velit dignissim sodales ut eu sem integer vitae justo eget magna fermentum iaculis eu non diam phasellus vestibulum lorem sed risus ultricies tristique nulla aliquet enim tortor at auctor urna nunc id cursus metus aliquam eleifend mi in nulla posuere sollicitudin aliquam ultrices sagittis orci a scelerisque purus semper eget duis at tellus at urna condimentum mattis pellentesque id nibh tortor id aliquet lectus proin nibh nisl condimentum id venenatis a condimentum vitae sapien pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas sed tempus urna et pharetra pharetra massa massa ultricies mi quis hendrerit dolor magna eget est lorem ipsum dolor sit amet consectetur adipiscing elit pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas integer eget aliquet nibh praesent tristique magna sit amet purus gravida quis blandit turpis cursus in hac habitasse platea dictumst quisque sagittis purus sit amet volutpat consequat mauris nunc congue nisi vitae suscipit tellus mauris a diam maecenas sed enim ut sem viverra aliquet eget sit amet tellus cras adipiscing enim eu turpis egestas pretium aenean pharetra";
-    uint8_t *input = (uint8_t *) aligned_alloc(32,(strlen(input_text)+32) & ~31);
-    strcpy((char *)input, input_text);
 
     uint8_t key[32];
 
@@ -210,12 +208,20 @@ bool chacha20_large_enc(int opt){
 
     uint8_t *copy = (uint8_t *) malloc(strlen(input_text)+1);
     strcpy((char *)copy, input_text);
+    uint8_t *input = (uint8_t *) aligned_alloc(32,(strlen(input_text)+32) & ~31);
+    strcpy((char *)input, input_text);
 
-    struct chacha20_context original;
-    chacha20_init_context(&original, key, nonce, 1);
-    chacha20_xor(&original, (uint8_t *)copy, strlen(input_text)+1);
+    int test = sodium_init();
+    if (test == -1) {
+        cout << "Error initializing libsodium" << endl;
+        return false;
+    }
+    //encrypt with libsodium
+    uint8_t *original = (uint8_t *) malloc(strlen(input_text)+1);
+    memcpy(original, input_text, strlen(input_text)+1);
+    crypto_stream_chacha20_ietf_xor_ic(copy, copy, strlen(input_text)+1, nonce, 1, key);
 
-    block.encryptOpt(opt, (uint8_t *)input, strlen(input_text)+1);
+    block.encryptOpt(opt, input, strlen(input_text)+1);
 
     //check if input is equal to copy
     for(int i = 0; i < (int)strlen(input_text)+1; i++){

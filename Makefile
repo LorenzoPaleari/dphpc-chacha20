@@ -3,7 +3,7 @@ INCLUDES := -I/usr/local/include
 LDFLAGS := -L/usr/local/lib -lsodium
 TARGET := bin
 F_POS := input_data/
-FILES := ./src/original/chacha20.cpp ./src/chacha.cpp main.cpp ./src/test_client.cpp
+FILES := ./src/chacha.cpp main.cpp ./src/test_client.cpp
 FILE_CHACHA := ./src/chacha.cpp
 FILE_CHACHA_O := ./src/chacha.o
 CXXFLAGS := -D $(UNAME) -Wall -Wextra -pedantic -std=c++11 -ffast-math -O3 -mfma -mavx2 -mavx -march=native -fopenmp
@@ -34,7 +34,7 @@ m_run: $(TARGET) check-env
 	else \
 	    printf "\033[1;31mError: The run failed.\033[0m\n"; exit 1; \
 	fi
-	@python3 -m venv venv; source venv/bin/activate; pip install --upgrade -q pip; pip install -q matplotlib; python3 ./output_data/graphs.py;
+	@python3 -m venv venv; . ./venv/bin/activate; pip install --upgrade -q pip; pip install -q matplotlib; python3 ./output_data/graphs.py;
 	@if [ $$? -eq 0 ]; then \
 	    printf "\r\033[1;32mResults Plotted.    \033[0m\n\n"; \
 	else \
