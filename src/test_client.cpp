@@ -67,6 +67,8 @@ bool chacha20_rfc(int opt){
     }
     __m256i temp_3[16];
     __m256i initial_state[16];
+    __m256i rotate16 = _mm256_set_epi32(0x0d0c0f0e, 0x09080b0a, 0x05040706, 0x01000302, 0x0d0c0f0e, 0x09080b0a, 0x05040706, 0x01000302);
+    __m256i rotate8 = _mm256_set_epi32(0x0e0d0c0f, 0x0a09080b, 0x06050407, 0x02010003, 0x0e0d0c0f, 0x0a09080b, 0x06050407, 0x02010003);
     for (int i = 0; i < 16; i++){
         temp_3[i] = _mm256_set1_epi32(block.state[i]);
         initial_state[i] = temp_3[i];
@@ -92,22 +94,22 @@ bool chacha20_rfc(int opt){
             block.block_quarter_round_opt2(result,1,temp);
             break;
         case 3:
-            block.quarter_round_vect(&temp_3[1], &temp_3[5], &temp_3[9], &temp_3[13]);
-            block.quarter_round_vect(&temp_3[2], &temp_3[6], &temp_3[10], &temp_3[14]);
-            block.quarter_round_vect(&temp_3[3], &temp_3[7], &temp_3[11], &temp_3[15]);
-            block.block_quarter_round_opt3_big_endian(result_vect,1, temp_3, _mm256_set_epi32(7,6,5,4,3,2,1,0), initial_state);
+            block.quarter_round_vect(&temp_3[1], &temp_3[5], &temp_3[9], &temp_3[13], rotate16, rotate8);
+            block.quarter_round_vect(&temp_3[2], &temp_3[6], &temp_3[10], &temp_3[14], rotate16, rotate8);
+            block.quarter_round_vect(&temp_3[3], &temp_3[7], &temp_3[11], &temp_3[15], rotate16, rotate8);
+            block.block_quarter_round_opt3_big_endian(result_vect,1, temp_3, _mm256_set_epi32(7,6,5,4,3,2,1,0), initial_state, rotate16, rotate8);
             break;
         case 4:
-            block.quarter_round_vect(&temp_3[1], &temp_3[5], &temp_3[9], &temp_3[13]);
-            block.quarter_round_vect(&temp_3[2], &temp_3[6], &temp_3[10], &temp_3[14]);
-            block.quarter_round_vect(&temp_3[3], &temp_3[7], &temp_3[11], &temp_3[15]);
-            block.block_quarter_round_opt3_big_endian(result_vect,1, temp_3, _mm256_set_epi32(7,6,5,4,3,2,1,0), initial_state);
+            block.quarter_round_vect(&temp_3[1], &temp_3[5], &temp_3[9], &temp_3[13], rotate16, rotate8);
+            block.quarter_round_vect(&temp_3[2], &temp_3[6], &temp_3[10], &temp_3[14], rotate16, rotate8);
+            block.quarter_round_vect(&temp_3[3], &temp_3[7], &temp_3[11], &temp_3[15], rotate16, rotate8);
+            block.block_quarter_round_opt3_big_endian(result_vect,1, temp_3, _mm256_set_epi32(7,6,5,4,3,2,1,0), initial_state, rotate16, rotate8);
             break;
         case 5:
-            block.quarter_round_vect(&temp_3[1], &temp_3[5], &temp_3[9], &temp_3[13]);
-            block.quarter_round_vect(&temp_3[2], &temp_3[6], &temp_3[10], &temp_3[14]);
-            block.quarter_round_vect(&temp_3[3], &temp_3[7], &temp_3[11], &temp_3[15]);
-            block.block_quarter_round_opt3_big_endian(result_vect,1, temp_3, _mm256_set_epi32(7,6,5,4,3,2,1,0), initial_state);
+            block.quarter_round_vect(&temp_3[1], &temp_3[5], &temp_3[9], &temp_3[13], rotate16, rotate8);
+            block.quarter_round_vect(&temp_3[2], &temp_3[6], &temp_3[10], &temp_3[14], rotate16, rotate8);
+            block.quarter_round_vect(&temp_3[3], &temp_3[7], &temp_3[11], &temp_3[15], rotate16, rotate8);
+            block.block_quarter_round_opt3_big_endian(result_vect,1, temp_3, _mm256_set_epi32(7,6,5,4,3,2,1,0), initial_state, rotate16, rotate8);
             break;
         default:
             break;
