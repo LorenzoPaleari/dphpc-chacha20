@@ -32,7 +32,7 @@ m_run: $(TARGET) check-env
 	else \
 	    printf "\033[1;31mError: The run failed.\033[0m\n"; exit 1; \
 	fi
-	@python3 -m venv venv; source venv/bin/activate; pip install --upgrade -q pip; pip install -q matplotlib; python3 ./output_data/graphs.py; deactivate;
+	@python3 -m venv venv; source venv/bin/activate; pip install --upgrade -q pip; pip install -q matplotlib; python3 ./output_data/graphs.py;
 	@if [ $$? -eq 0 ]; then \
 	    printf "\r\033[1;32mResults Plotted.    \033[0m\n\n"; \
 	else \

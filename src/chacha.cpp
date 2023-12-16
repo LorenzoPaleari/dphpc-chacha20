@@ -179,6 +179,7 @@ void ChaCha20::encrypt_opt1(uint8_t *input, long len){
     long over = len%64;
 
     uint32_t temp[16];
+    uint8_t result[64];
 
     //MAKE A COPY OF THE STATE, SO WE CAN USE IT LATER - also equal for every block
     std::copy(this->state, this->state + 16, temp);
@@ -190,14 +191,12 @@ void ChaCha20::encrypt_opt1(uint8_t *input, long len){
 
 #pragma omp parallel for
     for (long i = 0; i < num_blocks; i++){
-        uint8_t result[64];
         this->block_quarter_round_opt1(result, i + 1, temp);
         for (int j = 0; j < 64; j++)
             *(input + (i<<6) + j) ^= *(result + j);
     }
 
     if (over != 0){
-        uint8_t result[64];
         this->block_quarter_round_opt1(result, num_blocks + 1, temp);
         for (int j = 0; j < over; j++)
             *(input + (num_blocks<<6) + j) ^= *(result + j);
@@ -207,65 +206,53 @@ void ChaCha20::encrypt_opt1(uint8_t *input, long len){
 
 
 
-/***************************
-*    OPT2 - Vectorization   *
-****************************/
+/*******************************************
+*    OPT2 - General improvements - Fixed   *
+********************************************/
 
-__attribute__((always_inline)) void ChaCha20::quarter_round_vect(__m256i *a, __m256i *b, __m256i *c, __m256i *d){
-    *a = _mm256_add_epi32(*a, *b); *d = _mm256_xor_si256(*d, *a); *d = _mm256_or_si256(_mm256_slli_epi32(*d, 16), _mm256_srli_epi32(*d, 16));
-    *c = _mm256_add_epi32(*c, *d); *b = _mm256_xor_si256(*b, *c); *b = _mm256_or_si256(_mm256_slli_epi32(*b, 12), _mm256_srli_epi32(*b, 20));
-    *a = _mm256_add_epi32(*a, *b); *d = _mm256_xor_si256(*d, *a); *d = _mm256_or_si256(_mm256_slli_epi32(*d, 8), _mm256_srli_epi32(*d, 24));
-    *c = _mm256_add_epi32(*c, *d); *b = _mm256_xor_si256(*b, *c); *b = _mm256_or_si256(_mm256_slli_epi32(*b, 7), _mm256_srli_epi32(*b, 25));
+__attribute__((always_inline)) void ChaCha20::quarter_round_opt2(uint32_t *a, uint32_t *b, uint32_t *c, uint32_t *d){
+    *a += *b; *d ^= *a; *d = (*d << 16) | (*d >> 16);
+    *c += *d; *b ^= *c; *b = (*b << 12) | (*b >> 20);
+    *a += *b; *d ^= *a; *d = (*d << 8) | (*d >> 24);
+    *c += *d; *b ^= *c; *b = (*b << 7) | (*b >> 25);
 }
 
-__attribute__((always_inline)) void ChaCha20::block_quarter_round_opt2(uint8_t result[512], uint32_t counter, __m256i temp_c[16], __m256i adder){
+__attribute__((always_inline)) void ChaCha20::block_quarter_round_opt2(uint8_t result[64], uint32_t counter, uint32_t temp_c[16]){
+    uint32_t temp[16];
 
-    //MAKE A COPY OF THE STATE
-    __m256i temp[16];
-    for (int i = 0; i < 16; i++){
-        temp[i] = temp_c[i];
-    }
+    //MAKE A COPY OF TEMP_C
+    std::copy(temp_c, temp_c + 16, temp);
+    temp[12] = counter;
 
-    temp[12] = _mm256_add_epi32(_mm256_set1_epi32(counter), adder);
-
-    quarter_round_vect(&temp[0], &temp[4], &temp[8], &temp[12]);
-    quarter_round_vect(&temp[0], &temp[5], &temp[10], &temp[15]);
-    quarter_round_vect(&temp[1], &temp[6], &temp[11], &temp[12]);
-    quarter_round_vect(&temp[2], &temp[7], &temp[8], &temp[13]);
-    quarter_round_vect(&temp[3], &temp[4], &temp[9], &temp[14]);
+    quarter_round_opt2(&temp[0], &temp[4], &temp[8], &temp[12]);
+    quarter_round_opt2(&temp[0], &temp[5], &temp[10], &temp[15]);
+    quarter_round_opt2(&temp[1], &temp[6], &temp[11], &temp[12]);
+    quarter_round_opt2(&temp[2], &temp[7], &temp[8], &temp[13]);
+    quarter_round_opt2(&temp[3], &temp[4], &temp[9], &temp[14]);
 
     for (int i = 0; i < 9; i++){
-        quarter_round_vect(&temp[0], &temp[4], &temp[8], &temp[12]);
-        quarter_round_vect(&temp[1], &temp[5], &temp[9], &temp[13]);
-        quarter_round_vect(&temp[2], &temp[6], &temp[10], &temp[14]);
-        quarter_round_vect(&temp[3], &temp[7], &temp[11], &temp[15]);
-        quarter_round_vect(&temp[0], &temp[5], &temp[10], &temp[15]);
-        quarter_round_vect(&temp[1], &temp[6], &temp[11], &temp[12]);
-        quarter_round_vect(&temp[2], &temp[7], &temp[8], &temp[13]);
-        quarter_round_vect(&temp[3], &temp[4], &temp[9], &temp[14]);
+        quarter_round_opt2(&temp[0], &temp[4], &temp[8], &temp[12]);
+        quarter_round_opt2(&temp[1], &temp[5], &temp[9], &temp[13]);
+        quarter_round_opt2(&temp[2], &temp[6], &temp[10], &temp[14]);
+        quarter_round_opt2(&temp[3], &temp[7], &temp[11], &temp[15]);
+        quarter_round_opt2(&temp[0], &temp[5], &temp[10], &temp[15]);
+        quarter_round_opt2(&temp[1], &temp[6], &temp[11], &temp[12]);
+        quarter_round_opt2(&temp[2], &temp[7], &temp[8], &temp[13]);
+        quarter_round_opt2(&temp[3], &temp[4], &temp[9], &temp[14]);
     }
 
     //ADD THE STATE TO THE SCRUMBLED STATE
     for (int i = 0; i < 16; i++){
-        temp[i] = _mm256_add_epi32(temp[i], _mm256_set1_epi32(this->state[i]));
+        temp[i] += this->state[i];
     }
-    temp[12] = _mm256_add_epi32(temp[12], _mm256_add_epi32(_mm256_set1_epi32(counter), adder));
+    temp[12] += counter;
 
     //COPY THE SCRUMBLED STATE TO THE RESULT POINTER AS LITTLE ENDIAN
-    uint32_t temp_2[128];
-    uint32_t temp_3[128];
     for (int i = 0; i < 16; i++){
-        _mm256_store_si256((__m256i *)(temp_2 + (i<<3)), temp[i]);
-    }
-    for (int i = 0; i < 128; i++){
-        temp_3[(i<<4)%128 + (i>>3)] = temp_2[i];
-    }
-
-    for (int i = 0; i < 128; i++){
-        *(result + (i<<2)) = (temp_3[i] >> 0) & 0xff;
-        *(result + (i<<2) + 1) = (temp_3[i] >> 8) & 0xff;
-        *(result + (i<<2) + 2) = (temp_3[i] >> 16) & 0xff;
-        *(result + (i<<2) + 3) = (temp_3[i] >> 24) & 0xff;
+        *(result + (i<<2)) = (temp[i] >> 0) & 0xff;
+        *(result + (i<<2) + 1) = (temp[i] >> 8) & 0xff;
+        *(result + (i<<2) + 2) = (temp[i] >> 16) & 0xff;
+        *(result + (i<<2) + 3) = (temp[i] >> 24) & 0xff;
     }
 }
 
@@ -273,64 +260,46 @@ void ChaCha20::encrypt_opt2(uint8_t *input, long len){
 
     long num_blocks = len/64;
     long over = len%64;
-    long num_blocks_8 = num_blocks/8;
-    long over_8 = num_blocks%8;
 
-    // make some copy of the state that are going to be used by every block later
-    __m256i temp[16];
-    __m256i adder = _mm256_set_epi32(7,6,5,4,3,2,1,0);
+    uint32_t temp[16];
 
-    for (int i = 0; i < 16; i++){
-        temp[i] = _mm256_set1_epi32(this->state[i]);
+    //MAKE A COPY OF THE STATE, SO WE CAN USE IT LATER - also equal for every block
+    std::copy(this->state, this->state + 16, temp);
+
+    //EQUAL FOR EVERY BLOCK
+    quarter_round_opt2(&temp[1], &temp[5], &temp[9], &temp[13]);
+    quarter_round_opt2(&temp[2], &temp[6], &temp[10], &temp[14]);
+    quarter_round_opt2(&temp[3], &temp[7], &temp[11], &temp[15]);
+
+#pragma omp parallel for shared(input, temp)
+    for (long i = 0; i < num_blocks; i++){
+        uint8_t result[64];
+        this->block_quarter_round_opt2(result, i + 1, temp);
+        for (int j = 0; j < 64; j++)
+            *(input + (i<<6) + j) ^= *(result + j);
     }
 
-    quarter_round_vect(&temp[1], &temp[5], &temp[9], &temp[13]);
-    quarter_round_vect(&temp[2], &temp[6], &temp[10], &temp[14]);
-    quarter_round_vect(&temp[3], &temp[7], &temp[11], &temp[15]);
-
-#pragma omp parallel for
-    for (long i = 0; i < num_blocks_8; i++){
-        uint8_t result[512];
-        this->block_quarter_round_opt2(result, (i<<3) + 1, temp, adder);
-        for (int j = 0; j < 512; j++)
-            *(input + (i<<9) + j) ^= *(result + j);
-    }
-
-    uint32_t temp_opt1[16];
-    if (over_8 != 0 || over != 0){
-        std::copy(this->state, this->state + 16, temp_opt1);
-        //EQUAL FOR EVERY BLOCK
-        quarter_round_opt1(&temp_opt1[1], &temp_opt1[5], &temp_opt1[9], &temp_opt1[13]);
-        quarter_round_opt1(&temp_opt1[2], &temp_opt1[6], &temp_opt1[10], &temp_opt1[14]);
-        quarter_round_opt1(&temp_opt1[3], &temp_opt1[7], &temp_opt1[11], &temp_opt1[15]);
-    }
-
-    long data_offset = num_blocks_8<<9;
-    long counter_offset = (num_blocks_8<<3) + 1;
-    if (over_8 != 0){
-        uint8_t res64[64];
-        for (long i = 0; i < over_8; i++){
-            this->block_quarter_round_opt1(res64, counter_offset + i, temp_opt1);
-            for (int j = 0; j < 64; j++)
-                *(input + data_offset + (i<<6) + j) ^= *(res64 + j);
-        }
-    }
-
-    data_offset += over_8<<6;
     if (over != 0){
-        uint8_t res64[64];
-        this->block_quarter_round_opt1(res64, num_blocks+1, temp_opt1);
+        uint8_t result[64];
+        this->block_quarter_round_opt2(result, num_blocks + 1, temp);
         for (int j = 0; j < over; j++)
-            *(input + data_offset + j) ^= *(res64 + j);
+            *(input + (num_blocks<<6) + j) ^= *(result + j);
     }
 }
 
 
 
-/***********************************
-*    OPT3 - Better Vectorization   *
-************************************/
 
+/****************************
+*    OPT3 - Vectorization   *
+*****************************/
+
+__attribute__((always_inline)) void ChaCha20::quarter_round_vect(__m256i *a, __m256i *b, __m256i *c, __m256i *d){
+    *a = _mm256_add_epi32(*a, *b); *d = _mm256_xor_si256(*d, *a); *d = _mm256_or_si256(_mm256_slli_epi32(*d, 16), _mm256_srli_epi32(*d, 16));
+    *c = _mm256_add_epi32(*c, *d); *b = _mm256_xor_si256(*b, *c); *b = _mm256_or_si256(_mm256_slli_epi32(*b, 12), _mm256_srli_epi32(*b, 20));
+    *a = _mm256_add_epi32(*a, *b); *d = _mm256_xor_si256(*d, *a); *d = _mm256_or_si256(_mm256_slli_epi32(*d, 8), _mm256_srli_epi32(*d, 24));
+    *c = _mm256_add_epi32(*c, *d); *b = _mm256_xor_si256(*b, *c); *b = _mm256_or_si256(_mm256_slli_epi32(*b, 7), _mm256_srli_epi32(*b, 25));
+}
 
 __attribute__((always_inline)) void ChaCha20::block_quarter_round_opt3_big_endian(uint8_t result[512], uint32_t counter, __m256i temp_c[16], __m256i adder, __m256i initial_state[16]){
 
@@ -500,7 +469,7 @@ void ChaCha20::encrypt_opt3(uint8_t *input, long len){
     quarter_round_vect(&temp[3], &temp[7], &temp[11], &temp[15]);
 
 #if __BYTE_ORDER__ == __BIG_ENDIAN__
-    #pragma omp parallel for
+    #pragma omp parallel for shared(input, temp, initial_state, adder)
     for (long i = 0; i < num_blocks_8; i++){
         uint8_t result[512];
         this->block_quarter_round_opt3_big_endian(result, (i<<3) + 1, temp, adder, initial_state);
@@ -515,7 +484,7 @@ void ChaCha20::encrypt_opt3(uint8_t *input, long len){
             *(input + (num_blocks_8<<9) + j) ^= *(result + j);
     }
 #else
-    #pragma omp parallel for
+    #pragma omp parallel for shared(input, temp, initial_state, adder)
     for (long i = 0; i < num_blocks_8; i++){
         this->block_quarter_round_opt3_little_endian(input + (i<<9), (i<<3) + 1, temp, adder, initial_state);
     }
@@ -531,19 +500,135 @@ void ChaCha20::encrypt_opt3(uint8_t *input, long len){
 
 
 
+
+/**************************************
+*    OPT4 - Vectorization - dynamic   *
+***************************************/
+
+void ChaCha20::encrypt_opt4(uint8_t *input, long len){
+
+    long num_blocks_8 = len/512;  //8 blocks of 64 bytes
+    long over_8 = len%512;
+
+    // make some copy of the state that are going to be used by every block later
+    __m256i temp[16];
+    __m256i initial_state[16];
+    __m256i adder = _mm256_set_epi32(7,6,5,4,3,2,1,0);
+
+    for (int i = 0; i < 16; i++){
+        temp[i] = _mm256_set1_epi32(this->state[i]);
+        initial_state[i] = _mm256_set1_epi32(this->state[i]);
+    }
+
+    quarter_round_vect(&temp[1], &temp[5], &temp[9], &temp[13]);
+    quarter_round_vect(&temp[2], &temp[6], &temp[10], &temp[14]);
+    quarter_round_vect(&temp[3], &temp[7], &temp[11], &temp[15]);
+
+#if __BYTE_ORDER__ == __BIG_ENDIAN__
+    #pragma omp parallel for schedule(dynamic) shared(input, temp, initial_state, adder)
+    for (long i = 0; i < num_blocks_8; i++){
+        uint8_t result[512];
+        this->block_quarter_round_opt3_big_endian(result, (i<<3) + 1, temp, adder, initial_state);
+        for (int j = 0; j < 512; j++)
+            *(input + (i<<9) + j) ^= *(result + j);
+    }
+
+    if (over_8 != 0){
+        uint8_t result[512];
+        this->block_quarter_round_opt3_big_endian(result, (num_blocks_8<<3)+1, temp, adder, initial_state);
+        for (int j = 0; j < over_8; j++)
+            *(input + (num_blocks_8<<9) + j) ^= *(result + j);
+    }
+#else
+    #pragma omp parallel for schedule(dynamic) shared(input, temp, initial_state, adder)
+    for (long i = 0; i < num_blocks_8; i++){
+        this->block_quarter_round_opt3_little_endian(input + (i<<9), (i<<3) + 1, temp, adder, initial_state);
+    }
+
+    if (over_8 != 0){
+        uint8_t result[512];
+        this->block_quarter_round_opt3_big_endian(result, (num_blocks_8<<3)+1, temp, adder, initial_state);
+        for (int j = 0; j < over_8; j++)
+            *(input + (num_blocks_8<<9) + j) ^= *(result + j);
+    }
+#endif
+}
+
+
+
+
+
+/***************************************
+*    OPT5 - Vectorization - guided   *
+****************************************/
+
+void ChaCha20::encrypt_opt5(uint8_t *input, long len){
+
+    long num_blocks_8 = len/512;  //8 blocks of 64 bytes
+    long over_8 = len%512;
+
+    // make some copy of the state that are going to be used by every block later
+    __m256i temp[16];
+    __m256i initial_state[16];
+    __m256i adder = _mm256_set_epi32(7,6,5,4,3,2,1,0);
+
+    for (int i = 0; i < 16; i++){
+        temp[i] = _mm256_set1_epi32(this->state[i]);
+        initial_state[i] = _mm256_set1_epi32(this->state[i]);
+    }
+
+    quarter_round_vect(&temp[1], &temp[5], &temp[9], &temp[13]);
+    quarter_round_vect(&temp[2], &temp[6], &temp[10], &temp[14]);
+    quarter_round_vect(&temp[3], &temp[7], &temp[11], &temp[15]);
+
+#if __BYTE_ORDER__ == __BIG_ENDIAN__
+    #pragma omp parallel for schedule(guided) shared(input, temp, initial_state, adder)
+    for (long i = 0; i < num_blocks_8; i++){
+        uint8_t result[512];
+        this->block_quarter_round_opt3_big_endian(result, (i<<3) + 1, temp, adder, initial_state);
+        for (int j = 0; j < 512; j++)
+            *(input + (i<<9) + j) ^= *(result + j);
+    }
+
+    if (over_8 != 0){
+        uint8_t result[512];
+        this->block_quarter_round_opt3_big_endian(result, (num_blocks_8<<3)+1, temp, adder, initial_state);
+        for (int j = 0; j < over_8; j++)
+            *(input + (num_blocks_8<<9) + j) ^= *(result + j);
+    }
+#else
+    #pragma omp parallel for schedule(guided) shared(input, temp, initial_state, adder)
+    for (long i = 0; i < num_blocks_8; i++){
+        this->block_quarter_round_opt3_little_endian(input + (i<<9), (i<<3) + 1, temp, adder, initial_state);
+    }
+
+    if (over_8 != 0){
+        uint8_t result[512];
+        this->block_quarter_round_opt3_big_endian(result, (num_blocks_8<<3)+1, temp, adder, initial_state);
+        for (int j = 0; j < over_8; j++)
+            *(input + (num_blocks_8<<9) + j) ^= *(result + j);
+    }
+#endif
+}
+
+
+
+
+
+
 /************
  *   CALLS   *
  ************/
 
 void ChaCha20::encryptOpt(int opt_num, uint8_t *input, long len){
-    method_function method_pointer[4] = {&ChaCha20::encrypt, &ChaCha20::encrypt_opt1, &ChaCha20::encrypt_opt2, &ChaCha20::encrypt_opt3};
+    method_function method_pointer[6] = {&ChaCha20::encrypt, &ChaCha20::encrypt_opt1, &ChaCha20::encrypt_opt2, &ChaCha20::encrypt_opt3, &ChaCha20::encrypt_opt4, &ChaCha20::encrypt_opt5};
     method_function func = method_pointer[opt_num];
     (this->*func)(input,len);
 }
 
 void ChaCha20::decryptOpt(int opt_num, uint8_t *input, long len){
-    #define NDEC 4
-    method_function method_pointer[NDEC] = {&ChaCha20::encrypt, &ChaCha20::encrypt_opt1, &ChaCha20::encrypt_opt2, &ChaCha20::encrypt_opt3};
+    #define NDEC 6
+    method_function method_pointer[NDEC] = {&ChaCha20::encrypt, &ChaCha20::encrypt_opt1, &ChaCha20::encrypt_opt2, &ChaCha20::encrypt_opt3, &ChaCha20::encrypt_opt4, &ChaCha20::encrypt_opt5};
 
     method_function func;
     if(opt_num > NDEC){

@@ -6,7 +6,7 @@
 
 using namespace std;
 
-#define OPT_L 4
+#define OPT_L 6
 #define IS_BIG_ENDIAN (!*(unsigned char *)&(uint16_t){1})
 
 TestClient::TestClient(){
@@ -61,6 +61,17 @@ bool chacha20_rfc(int opt){
 
     ChaCha20 block = ChaCha20(key,nonce);
 
+    uint32_t temp[16];
+    for (int i = 0; i < 16; i++){
+        temp[i] = block.state[i];
+    }
+    __m256i temp_3[16];
+    __m256i initial_state[16];
+    for (int i = 0; i < 16; i++){
+        temp_3[i] = _mm256_set1_epi32(block.state[i]);
+        initial_state[i] = temp_3[i];
+    }
+
     uint8_t result[64];
     uint8_t result_vect [512];
 
@@ -69,32 +80,30 @@ bool chacha20_rfc(int opt){
             block.block_quarter_round(result, 1);
             break;
         case 1:
-            uint32_t temp[16];
-            for (int i = 0; i < 16; i++){
-                temp[i] = block.state[i];
-            }
             block.quarter_round_opt1(&temp[1], &temp[5], &temp[9], &temp[13]);
             block.quarter_round_opt1(&temp[2], &temp[6], &temp[10], &temp[14]);
             block.quarter_round_opt1(&temp[3], &temp[7], &temp[11], &temp[15]);
             block.block_quarter_round_opt1(result,1,temp);
             break;
         case 2:
-            __m256i temp_2[16];
-            for (int i = 0; i < 16; i++){
-                temp_2[i] = _mm256_set1_epi32(block.state[i]);
-            }
-            block.quarter_round_vect(&temp_2[1], &temp_2[5], &temp_2[9], &temp_2[13]);
-            block.quarter_round_vect(&temp_2[2], &temp_2[6], &temp_2[10], &temp_2[14]);
-            block.quarter_round_vect(&temp_2[3], &temp_2[7], &temp_2[11], &temp_2[15]);
-            block.block_quarter_round_opt2(result_vect,1, temp_2, _mm256_set_epi32(7,6,5,4,3,2,1,0));
+            block.quarter_round_opt2(&temp[1], &temp[5], &temp[9], &temp[13]);
+            block.quarter_round_opt2(&temp[2], &temp[6], &temp[10], &temp[14]);
+            block.quarter_round_opt2(&temp[3], &temp[7], &temp[11], &temp[15]);
+            block.block_quarter_round_opt2(result,1,temp);
             break;
         case 3:
-            __m256i temp_3[16];
-            __m256i initial_state[16];
-            for (int i = 0; i < 16; i++){
-                temp_3[i] = _mm256_set1_epi32(block.state[i]);
-                initial_state[i] = temp_3[i];
-            }
+            block.quarter_round_vect(&temp_3[1], &temp_3[5], &temp_3[9], &temp_3[13]);
+            block.quarter_round_vect(&temp_3[2], &temp_3[6], &temp_3[10], &temp_3[14]);
+            block.quarter_round_vect(&temp_3[3], &temp_3[7], &temp_3[11], &temp_3[15]);
+            block.block_quarter_round_opt3_big_endian(result_vect,1, temp_3, _mm256_set_epi32(7,6,5,4,3,2,1,0), initial_state);
+            break;
+        case 4:
+            block.quarter_round_vect(&temp_3[1], &temp_3[5], &temp_3[9], &temp_3[13]);
+            block.quarter_round_vect(&temp_3[2], &temp_3[6], &temp_3[10], &temp_3[14]);
+            block.quarter_round_vect(&temp_3[3], &temp_3[7], &temp_3[11], &temp_3[15]);
+            block.block_quarter_round_opt3_big_endian(result_vect,1, temp_3, _mm256_set_epi32(7,6,5,4,3,2,1,0), initial_state);
+            break;
+        case 5:
             block.quarter_round_vect(&temp_3[1], &temp_3[5], &temp_3[9], &temp_3[13]);
             block.quarter_round_vect(&temp_3[2], &temp_3[6], &temp_3[10], &temp_3[14]);
             block.quarter_round_vect(&temp_3[3], &temp_3[7], &temp_3[11], &temp_3[15]);
@@ -111,7 +120,7 @@ bool chacha20_rfc(int opt){
        0xb5, 0x12, 0x9c, 0xd1, 0xde, 0x16, 0x4e, 0xb9, 0xcb, 0xd0, 0x83, 0xe8, 0xa2, 0x50, 0x3c, 0x4e
     };
 
-    if (opt > 1){
+    if (opt > 2){
         for (int i = 0; i < 64; i++){
             if (result_vect[i] != expected_result[i]){
                 return false;
