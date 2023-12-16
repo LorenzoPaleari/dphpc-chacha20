@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <math.h>
+#include <sodium.h>
 #include "src/original/chacha20.hpp"
 
 #ifdef Darwin
@@ -19,12 +20,12 @@
 #define OPT_L 6
 using namespace std;
 
-static long *start_run(uint8_t *message, long len, ChaCha20 c, int opt_n, struct chacha20_context *original, bool decrypt = false){
+static long *start_run(uint8_t *message, long len, ChaCha20 c, int opt_n, uint8_t key[32], uint8_t nonce[12], bool decrypt = false){
     long *times = (long *) malloc(sizeof(long) * 2);
 
     auto start = std::chrono::high_resolution_clock::now();
     if(opt_n == -1){
-        chacha20_xor(original, message, len);
+        crypto_stream_chacha20_ietf_xor_ic(message, message, len, key, 1, nonce);
     } else {
         c.encryptOpt(opt_n, message, len);
     }
@@ -34,7 +35,7 @@ static long *start_run(uint8_t *message, long len, ChaCha20 c, int opt_n, struct
     if (decrypt){
         start = std::chrono::high_resolution_clock::now();
         if(opt_n == -1){
-            chacha20_xor(original, message, len);
+            crypto_stream_chacha20_ietf_xor_ic(message, message, len, key, 1, nonce);
         } else {
             c.decryptOpt(opt_n, message, len);
         }
@@ -75,7 +76,7 @@ static bool from_file(char const *argv[]){
     //Init ChaCha20 - Creation of state
     ChaCha20 chacha = ChaCha20(key, nonce);
 
-    long *time = start_run(message, len, chacha, opt, NULL, true);
+    long *time = start_run(message, len, chacha, opt, key, nonce, true);
     cout << "Enc Time: " << time[0] << " microseconds" << endl;
     cout << "Dec Time: " << time[1] << " microseconds" << endl;
 
@@ -84,7 +85,7 @@ static bool from_file(char const *argv[]){
     return true;
 }
 
-static bool multiple_run(const char *argv[], ChaCha20 c, struct chacha20_context *original, int n_opt){
+static bool multiple_run(const char *argv[], ChaCha20 c, int n_opt, uint8_t key[32], uint8_t nonce[12]){
     long max_len_size = atol(argv[1]);
     int max_th = omp_get_max_threads();
     
@@ -124,9 +125,11 @@ static bool multiple_run(const char *argv[], ChaCha20 c, struct chacha20_context
             int thread_runs = (int)log2(n_threads)+1;
             long *gen_time = (long *) malloc(sizeof(long) * N_RUNS * thread_runs);
             while (n < N_RUNS){
-
+                
                 // Initialize the counter for original version
-                if(p == -1) chacha20_block_set_counter(original, 1);
+                if(p == -1){
+                    sodium_init();
+                }
 
                 for(int k = 1; k <= n_threads; k*=2){
                     uint32_t *message = (uint32_t *) aligned_alloc(32, (sizeof(uint32_t) * (start_len / 4) + 31) & ~31);
@@ -171,7 +174,7 @@ static bool multiple_run(const char *argv[], ChaCha20 c, struct chacha20_context
                     fflush(stdout);
 
                     omp_set_num_threads(k);
-                    long *time = start_run((uint8_t *)message, start_len, c, p, original);
+                    long *time = start_run((uint8_t *)message, start_len, c, p, key, nonce);
 
                     fprintf(fp, "%ld", time[0]);
                     if (k*2 <= n_threads) {
@@ -227,15 +230,13 @@ int main(int argc, char const *argv[])
         nonce[i] = rand() % 256;
 
     ChaCha20 chacha = ChaCha20(key, nonce);
-    struct chacha20_context original;
-    chacha20_init_context(&original, key, nonce, 1);
 
     switch(argc){
         case 4:
             from_file(argv);
             break;
         case 2:
-            multiple_run(argv, chacha, &original, OPT_L);
+            multiple_run(argv, chacha, OPT_L, key, nonce);
             break;
         case 1:
             cout << "No arguments just runs the test" << endl;
