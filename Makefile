@@ -1,4 +1,6 @@
 UNAME := $(shell uname)
+INCLUDES := -I/usr/local/include
+LDFLAGS := -L/usr/local/lib -lsodium
 TARGET := bin
 F_POS := input_data/
 FILES := ./src/original/chacha20.cpp ./src/chacha.cpp main.cpp ./src/test_client.cpp
@@ -17,7 +19,7 @@ endif
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) $(OBJS) -o $(TARGET) $(INCLUDES)
+	$(CXX) $(OBJS) -o $(TARGET) $(CXXFLAGS) $(LDFLAGS) $(INCLUDES)
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@ $(INCLUDES)

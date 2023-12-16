@@ -127,6 +127,7 @@ for l in lbl:
     plt.plot([format_size(size) for size in sizes], [original_dict[size][l] for size in sizes], marker='o', label=f'Original')
     plt.xlabel('Size of Input')
     plt.ylabel('Time (s)')
+    plt.yscale('log')
     plt.title("Original vs Optimized Encryption Time for Single Thread")
     plt.legend()
     plt.grid(True)
