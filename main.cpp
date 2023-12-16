@@ -1,7 +1,6 @@
 #include "include/chacha.hpp"
 #include "include/test_client.hpp"
 #include <iostream>
-#include "/usr/local/opt/libomp/include/omp.h"
 #include <string.h>
 #include <chrono>
 #include <sys/stat.h>
@@ -9,8 +8,15 @@
 #include <fcntl.h>
 #include <math.h>
 #include "src/original/chacha20.hpp"
+
+#ifdef Darwin
+#include "/usr/local/opt/libomp/include/omp.h"
+#else
+#include <omp.h>
+#endif
+
 #define N_RUNS 20
-#define OPT_L 4
+#define OPT_L 6
 using namespace std;
 
 static long *start_run(uint8_t *message, long len, ChaCha20 c, int opt_n, struct chacha20_context *original, bool decrypt = false){
