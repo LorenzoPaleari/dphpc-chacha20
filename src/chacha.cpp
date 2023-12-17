@@ -349,21 +349,36 @@ __attribute__((always_inline)) void ChaCha20::block_quarter_round_opt3_big_endia
         temp[i+2] = _mm256_unpacklo_epi64(temp_2[i+1], temp_2[i+3]);
         temp[i+3] = _mm256_unpackhi_epi64(temp_2[i+1], temp_2[i+3]);
     }
-    for (int i = 0; i < 16; i+=8){
-        temp_2[i] = _mm256_permute2x128_si256(temp[i], temp[i + 4], 0x20);
-        temp_2[i+1] = _mm256_permute2x128_si256(temp[i + 1], temp[i + 5], 0x20);
-        temp_2[i+2] = _mm256_permute2x128_si256(temp[i + 2], temp[i + 6], 0x20);
-        temp_2[i+3] = _mm256_permute2x128_si256(temp[i + 3], temp[i + 7], 0x20);
-        temp_2[i+4] = _mm256_permute2x128_si256(temp[i], temp[i + 4], 0x31);
-        temp_2[i+5] = _mm256_permute2x128_si256(temp[i + 1], temp[i + 5], 0x31);
-        temp_2[i+6] = _mm256_permute2x128_si256(temp[i + 2], temp[i + 6], 0x31);
-        temp_2[i+7] = _mm256_permute2x128_si256(temp[i + 3], temp[i + 7], 0x31);
-    }
+
+    temp_2[0] = _mm256_permute2x128_si256(temp[0], temp[4], 0x21);
+    temp[0] = _mm256_blend_epi32(temp[0], temp_2[0], 0xf0);
+    temp[4] = _mm256_blend_epi32(temp_2[0], temp[4], 0xf0);
+    temp_2[1] = _mm256_permute2x128_si256(temp[1], temp[5], 0x21);
+    temp[1] = _mm256_blend_epi32(temp[1], temp_2[1], 0xf0);
+    temp[5] = _mm256_blend_epi32(temp_2[1], temp[5], 0xf0);
+    temp_2[2] = _mm256_permute2x128_si256(temp[2], temp[6], 0x21);
+    temp[2] = _mm256_blend_epi32(temp[2], temp_2[2], 0xf0);
+    temp[6] = _mm256_blend_epi32(temp_2[2], temp[6], 0xf0);
+    temp_2[3] = _mm256_permute2x128_si256(temp[3], temp[7], 0x21);
+    temp[3] = _mm256_blend_epi32(temp[3], temp_2[3], 0xf0);
+    temp[7] = _mm256_blend_epi32(temp_2[3], temp[7], 0xf0);
+    temp_2[4] = _mm256_permute2x128_si256(temp[8], temp[12], 0x21);
+    temp[8] = _mm256_blend_epi32(temp[8], temp_2[4], 0xf0);
+    temp[12] = _mm256_blend_epi32(temp_2[4], temp[12], 0xf0);
+    temp_2[5] = _mm256_permute2x128_si256(temp[9], temp[13], 0x21);
+    temp[9] = _mm256_blend_epi32(temp[9], temp_2[5], 0xf0);
+    temp[13] = _mm256_blend_epi32(temp_2[5], temp[13], 0xf0);
+    temp_2[6] = _mm256_permute2x128_si256(temp[10], temp[14], 0x21);
+    temp[10] = _mm256_blend_epi32(temp[10], temp_2[6], 0xf0);
+    temp[14] = _mm256_blend_epi32(temp_2[6], temp[14], 0xf0);
+    temp_2[7] = _mm256_permute2x128_si256(temp[11], temp[15], 0x21);
+    temp[11] = _mm256_blend_epi32(temp[11], temp_2[7], 0xf0);
+    temp[15] = _mm256_blend_epi32(temp_2[7], temp[15], 0xf0);
 
     uint32_t temp_3[128];
     for (int i = 0; i < 8; i++){
-        _mm256_store_si256((__m256i *)(temp_3 + (i<<4)), temp_2[i]);
-        _mm256_store_si256((__m256i *)(temp_3 + (i<<4)+ 8), temp_2[i + 8]);
+        _mm256_store_si256((__m256i *)(temp_3 + (i<<4)), temp[i]);
+        _mm256_store_si256((__m256i *)(temp_3 + (i<<4)+ 8), temp[i + 8]);
     }
 
     for (int i = 0; i < 128; i++){
@@ -422,16 +437,32 @@ __attribute__((always_inline)) void ChaCha20::block_quarter_round_opt3_little_en
         temp[i+2] = _mm256_unpacklo_epi64(temp_2[i+1], temp_2[i+3]);
         temp[i+3] = _mm256_unpackhi_epi64(temp_2[i+1], temp_2[i+3]);
     }
-    for (int i = 0; i < 16; i+=8){
-        temp_2[i] = _mm256_permute2x128_si256(temp[i], temp[i + 4], 0x20);
-        temp_2[i+1] = _mm256_permute2x128_si256(temp[i + 1], temp[i + 5], 0x20);
-        temp_2[i+2] = _mm256_permute2x128_si256(temp[i + 2], temp[i + 6], 0x20);
-        temp_2[i+3] = _mm256_permute2x128_si256(temp[i + 3], temp[i + 7], 0x20);
-        temp_2[i+4] = _mm256_permute2x128_si256(temp[i], temp[i + 4], 0x31);
-        temp_2[i+5] = _mm256_permute2x128_si256(temp[i + 1], temp[i + 5], 0x31);
-        temp_2[i+6] = _mm256_permute2x128_si256(temp[i + 2], temp[i + 6], 0x31);
-        temp_2[i+7] = _mm256_permute2x128_si256(temp[i + 3], temp[i + 7], 0x31);
-    }
+
+    temp_2[0] = _mm256_permute2x128_si256(temp[0], temp[4], 0x21);
+    temp[0] = _mm256_blend_epi32(temp[0], temp_2[0], 0xf0);
+    temp[4] = _mm256_blend_epi32(temp_2[0], temp[4], 0xf0);
+    temp_2[1] = _mm256_permute2x128_si256(temp[1], temp[5], 0x21);
+    temp[1] = _mm256_blend_epi32(temp[1], temp_2[1], 0xf0);
+    temp[5] = _mm256_blend_epi32(temp_2[1], temp[5], 0xf0);
+    temp_2[2] = _mm256_permute2x128_si256(temp[2], temp[6], 0x21);
+    temp[2] = _mm256_blend_epi32(temp[2], temp_2[2], 0xf0);
+    temp[6] = _mm256_blend_epi32(temp_2[2], temp[6], 0xf0);
+    temp_2[3] = _mm256_permute2x128_si256(temp[3], temp[7], 0x21);
+    temp[3] = _mm256_blend_epi32(temp[3], temp_2[3], 0xf0);
+    temp[7] = _mm256_blend_epi32(temp_2[3], temp[7], 0xf0);
+    temp_2[4] = _mm256_permute2x128_si256(temp[8], temp[12], 0x21);
+    temp[8] = _mm256_blend_epi32(temp[8], temp_2[4], 0xf0);
+    temp[12] = _mm256_blend_epi32(temp_2[4], temp[12], 0xf0);
+    temp_2[5] = _mm256_permute2x128_si256(temp[9], temp[13], 0x21);
+    temp[9] = _mm256_blend_epi32(temp[9], temp_2[5], 0xf0);
+    temp[13] = _mm256_blend_epi32(temp_2[5], temp[13], 0xf0);
+    temp_2[6] = _mm256_permute2x128_si256(temp[10], temp[14], 0x21);
+    temp[10] = _mm256_blend_epi32(temp[10], temp_2[6], 0xf0);
+    temp[14] = _mm256_blend_epi32(temp_2[6], temp[14], 0xf0);
+    temp_2[7] = _mm256_permute2x128_si256(temp[11], temp[15], 0x21);
+    temp[11] = _mm256_blend_epi32(temp[11], temp_2[7], 0xf0);
+    temp[15] = _mm256_blend_epi32(temp_2[7], temp[15], 0xf0);
+
 
     __m256i input_vect[16];
     for (int i = 0; i < 16; i++){
@@ -439,13 +470,13 @@ __attribute__((always_inline)) void ChaCha20::block_quarter_round_opt3_little_en
     }
 
     for (int i = 0; i < 8; i++){
-        temp_2[i] = _mm256_xor_si256(temp_2[i], input_vect[i<<1]);
-        temp_2[i + 8] = _mm256_xor_si256(temp_2[i + 8], input_vect[(i<<1) + 1]);
+        temp[i] = _mm256_xor_si256(temp[i], input_vect[i<<1]);
+        temp[i + 8] = _mm256_xor_si256(temp[i + 8], input_vect[(i<<1) + 1]);
     }
 
     for (int i = 0; i < 8; i++){
-        _mm256_store_si256((__m256i *)(input + (i<<6)), temp_2[i]);
-        _mm256_store_si256((__m256i *)(input + (i<<6)+ 32), temp_2[i + 8]);
+        _mm256_store_si256((__m256i *)(input + (i<<6)), temp[i]);
+        _mm256_store_si256((__m256i *)(input + (i<<6)+ 32), temp[i + 8]);
     }
 }
 
