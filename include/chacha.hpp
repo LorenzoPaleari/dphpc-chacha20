@@ -32,7 +32,7 @@ class ChaCha20 {
         /* OPT 3 */
         void encrypt_opt3(uint8_t *input, long len);
         void block_quarter_round_opt3_big_endian(uint8_t result[512], uint32_t counter, __m256i temp_c[16], __m256i adder, __m256i initial_state[16], __m256i rotate16, __m256i rotate8);
-        void block_quarter_round_opt3_little_endian(uint8_t *input, uint32_t counter, __m256i temp_c[16], __m256i adder, __m256i initial_state[16], __m256i rotate16, __m256i rotate8);
+        void block_quarter_round_opt3_little_endian(uint8_t *input, uint32_t counter, __m256i temp0, __m256i temp1, __m256i temp2, __m256i temp3, __m256i temp4, __m256i temp5, __m256i temp6, __m256i temp7, __m256i temp8, __m256i temp9, __m256i temp10, __m256i temp11, __m256i temp12, __m256i temp13, __m256i temp14, __m256i temp15, __m256i adder, __m256i initial_state[16], __m256i rotate16, __m256i rotate8);
         void quarter_round_vect(__m256i *a, __m256i *b, __m256i *c, __m256i *d, __m256i rotate16, __m256i rotate8);
 
         /* OPT 4 */
