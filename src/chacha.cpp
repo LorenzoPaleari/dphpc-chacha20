@@ -295,9 +295,9 @@ void ChaCha20::encrypt_opt2(uint8_t *input, long len){
 *****************************/
 
 __attribute__((always_inline)) void ChaCha20::quarter_round_vect(__m256i *a, __m256i *b, __m256i *c, __m256i *d, __m256i rotate16, __m256i rotate8){
-    *a = _mm256_add_epi32(*a, *b); *d = _mm256_xor_si256(*d, *a); *d = _mm256_shuffle_epi8(*d, rotate16);
+    *a = _mm256_add_epi32(*a, *b); *d = _mm256_shuffle_epi8(_mm256_xor_si256(*d, *a), rotate16);
     *c = _mm256_add_epi32(*c, *d); *b = _mm256_xor_si256(*b, *c); *b = _mm256_or_si256(_mm256_slli_epi32(*b, 12), _mm256_srli_epi32(*b, 20));
-    *a = _mm256_add_epi32(*a, *b); *d = _mm256_xor_si256(*d, *a); *d = _mm256_shuffle_epi8(*d, rotate8);
+    *a = _mm256_add_epi32(*a, *b); *d = _mm256_shuffle_epi8(_mm256_xor_si256(*d, *a), rotate8);
     *c = _mm256_add_epi32(*c, *d); *b = _mm256_xor_si256(*b, *c); *b = _mm256_or_si256(_mm256_slli_epi32(*b, 7), _mm256_srli_epi32(*b, 25));
 }
 
@@ -389,95 +389,142 @@ __attribute__((always_inline)) void ChaCha20::block_quarter_round_opt3_big_endia
     }
 }
 
-__attribute__((always_inline)) void ChaCha20::block_quarter_round_opt3_little_endian(uint8_t *input, uint32_t counter, __m256i temp_c[16], __m256i adder, __m256i initial_state[16], __m256i rotate16, __m256i rotate8){
-
-    //MAKE A COPY OF THE STATE
-    __m256i temp[16];
-    std::copy(temp_c, temp_c + 12, temp);
-    std::copy(temp_c + 13, temp_c + 16, temp + 13);
+__attribute__((always_inline)) void ChaCha20::block_quarter_round_opt3_little_endian(uint8_t *input, uint32_t counter, __m256i temp0, __m256i temp1, __m256i temp2, __m256i temp3, __m256i temp4, __m256i temp5, __m256i temp6, __m256i temp7, __m256i temp8, __m256i temp9, __m256i temp10, __m256i temp11, __m256i temp12, __m256i temp13, __m256i temp14, __m256i temp15, __m256i adder, __m256i initial_state[16], __m256i rotate16, __m256i rotate8){
 
     __m256i counter_vect = _mm256_add_epi32(_mm256_set1_epi32(counter), adder);
-    temp[12] = counter_vect;
+    temp12 = counter_vect;
 
-    quarter_round_vect(&temp[0], &temp[4], &temp[8], &temp[12], rotate16, rotate8);
-    quarter_round_vect(&temp[0], &temp[5], &temp[10], &temp[15], rotate16, rotate8);
-    quarter_round_vect(&temp[1], &temp[6], &temp[11], &temp[12], rotate16, rotate8);
-    quarter_round_vect(&temp[2], &temp[7], &temp[8], &temp[13], rotate16, rotate8);
-    quarter_round_vect(&temp[3], &temp[4], &temp[9], &temp[14], rotate16, rotate8);
+    quarter_round_vect(&temp0, &temp4, &temp8, &temp12, rotate16, rotate8);
+    quarter_round_vect(&temp0, &temp5, &temp10, &temp15, rotate16, rotate8);
+    quarter_round_vect(&temp1, &temp6, &temp11, &temp12, rotate16, rotate8);
+    quarter_round_vect(&temp2, &temp7, &temp8, &temp13, rotate16, rotate8);
+    quarter_round_vect(&temp3, &temp4, &temp9, &temp14, rotate16, rotate8);
 
     for (int i = 0; i < 9; i++){
-        quarter_round_vect(&temp[0], &temp[4], &temp[8], &temp[12], rotate16, rotate8);
-        quarter_round_vect(&temp[1], &temp[5], &temp[9], &temp[13], rotate16, rotate8);
-        quarter_round_vect(&temp[2], &temp[6], &temp[10], &temp[14], rotate16, rotate8);
-        quarter_round_vect(&temp[3], &temp[7], &temp[11], &temp[15], rotate16, rotate8);
-        quarter_round_vect(&temp[0], &temp[5], &temp[10], &temp[15], rotate16, rotate8);
-        quarter_round_vect(&temp[1], &temp[6], &temp[11], &temp[12], rotate16, rotate8);
-        quarter_round_vect(&temp[2], &temp[7], &temp[8], &temp[13], rotate16, rotate8);
-        quarter_round_vect(&temp[3], &temp[4], &temp[9], &temp[14], rotate16, rotate8);
+        quarter_round_vect(&temp0, &temp4, &temp8, &temp12, rotate16, rotate8);
+        quarter_round_vect(&temp1, &temp5, &temp9, &temp13, rotate16, rotate8);
+        quarter_round_vect(&temp2, &temp6, &temp10, &temp14, rotate16, rotate8);
+        quarter_round_vect(&temp3, &temp7, &temp11, &temp15, rotate16, rotate8);
+        quarter_round_vect(&temp0, &temp5, &temp10, &temp15, rotate16, rotate8);
+        quarter_round_vect(&temp1, &temp6, &temp11, &temp12, rotate16, rotate8);
+        quarter_round_vect(&temp2, &temp7, &temp8, &temp13, rotate16, rotate8);
+        quarter_round_vect(&temp3, &temp4, &temp9, &temp14, rotate16, rotate8);
     }
 
     //ADD THE STATE TO THE SCRUMBLED STATE
-    for (int i = 0; i < 12; i++){
-        temp[i] = _mm256_add_epi32(temp[i], initial_state[i]);
-    }
-    temp[12] = _mm256_add_epi32(temp[12], counter_vect);
-    for (int i = 13; i < 16; i++){
-        temp[i] = _mm256_add_epi32(temp[i], initial_state[i]);
-    }
+    temp0 = _mm256_add_epi32(temp0, initial_state[0]);
+    temp1 = _mm256_add_epi32(temp1, initial_state[1]);
+    temp2 = _mm256_add_epi32(temp2, initial_state[2]);
+    temp3 = _mm256_add_epi32(temp3, initial_state[3]);
+    temp4 = _mm256_add_epi32(temp4, initial_state[4]);
+    temp5 = _mm256_add_epi32(temp5, initial_state[5]);
+    temp6 = _mm256_add_epi32(temp6, initial_state[6]);
+    temp7 = _mm256_add_epi32(temp7, initial_state[7]);
+    temp8 = _mm256_add_epi32(temp8, initial_state[8]);
+    temp9 = _mm256_add_epi32(temp9, initial_state[9]);
+    temp10 = _mm256_add_epi32(temp10, initial_state[10]);
+    temp11 = _mm256_add_epi32(temp11, initial_state[11]);
+    temp12 = _mm256_add_epi32(temp12, counter_vect);
+    temp13 = _mm256_add_epi32(temp13, initial_state[13]);
+    temp14 = _mm256_add_epi32(temp14, initial_state[14]);
+    temp15 = _mm256_add_epi32(temp15, initial_state[15]);
 
-    //REORDER VECTOR
+    //TRANSPOSE VECTORS
     __m256i temp_2[16];
-    for (int i = 0; i < 16; i+=2){
-        temp_2[i] = _mm256_unpacklo_epi32(temp[i], temp[i+1]);
-        temp_2[i+1] = _mm256_unpackhi_epi32(temp[i], temp[i+1]);
-    }
-    for (int i = 0; i < 16; i+=4){
-        temp[i] = _mm256_unpacklo_epi64(temp_2[i], temp_2[i+2]);
-        temp[i+1] = _mm256_unpackhi_epi64(temp_2[i], temp_2[i+2]);
-        temp[i+2] = _mm256_unpacklo_epi64(temp_2[i+1], temp_2[i+3]);
-        temp[i+3] = _mm256_unpackhi_epi64(temp_2[i+1], temp_2[i+3]);
-    }
+    temp_2[0] = _mm256_unpacklo_epi32(temp0, temp1);
+    temp_2[1] = _mm256_unpackhi_epi32(temp0, temp1);
+    temp_2[2] = _mm256_unpacklo_epi32(temp2, temp3);
+    temp_2[3] = _mm256_unpackhi_epi32(temp2, temp3);
+    temp_2[4] = _mm256_unpacklo_epi32(temp4, temp5);
+    temp_2[5] = _mm256_unpackhi_epi32(temp4, temp5);
+    temp_2[6] = _mm256_unpacklo_epi32(temp6, temp7);
+    temp_2[7] = _mm256_unpackhi_epi32(temp6, temp7);
+    temp_2[8] = _mm256_unpacklo_epi32(temp8, temp9);
+    temp_2[9] = _mm256_unpackhi_epi32(temp8, temp9);
+    temp_2[10] = _mm256_unpacklo_epi32(temp10, temp11);
+    temp_2[11] = _mm256_unpackhi_epi32(temp10, temp11);
+    temp_2[12] = _mm256_unpacklo_epi32(temp12, temp13);
+    temp_2[13] = _mm256_unpackhi_epi32(temp12, temp13);
+    temp_2[14] = _mm256_unpacklo_epi32(temp14, temp15);
+    temp_2[15] = _mm256_unpackhi_epi32(temp14, temp15);
 
-    temp_2[0] = _mm256_permute2x128_si256(temp[0], temp[4], 0x21);
-    temp[0] = _mm256_blend_epi32(temp[0], temp_2[0], 0xf0);
-    temp[4] = _mm256_blend_epi32(temp_2[0], temp[4], 0xf0);
-    temp_2[1] = _mm256_permute2x128_si256(temp[1], temp[5], 0x21);
-    temp[1] = _mm256_blend_epi32(temp[1], temp_2[1], 0xf0);
-    temp[5] = _mm256_blend_epi32(temp_2[1], temp[5], 0xf0);
-    temp_2[2] = _mm256_permute2x128_si256(temp[2], temp[6], 0x21);
-    temp[2] = _mm256_blend_epi32(temp[2], temp_2[2], 0xf0);
-    temp[6] = _mm256_blend_epi32(temp_2[2], temp[6], 0xf0);
-    temp_2[3] = _mm256_permute2x128_si256(temp[3], temp[7], 0x21);
-    temp[3] = _mm256_blend_epi32(temp[3], temp_2[3], 0xf0);
-    temp[7] = _mm256_blend_epi32(temp_2[3], temp[7], 0xf0);
-    temp_2[4] = _mm256_permute2x128_si256(temp[8], temp[12], 0x21);
-    temp[8] = _mm256_blend_epi32(temp[8], temp_2[4], 0xf0);
-    temp[12] = _mm256_blend_epi32(temp_2[4], temp[12], 0xf0);
-    temp_2[5] = _mm256_permute2x128_si256(temp[9], temp[13], 0x21);
-    temp[9] = _mm256_blend_epi32(temp[9], temp_2[5], 0xf0);
-    temp[13] = _mm256_blend_epi32(temp_2[5], temp[13], 0xf0);
-    temp_2[6] = _mm256_permute2x128_si256(temp[10], temp[14], 0x21);
-    temp[10] = _mm256_blend_epi32(temp[10], temp_2[6], 0xf0);
-    temp[14] = _mm256_blend_epi32(temp_2[6], temp[14], 0xf0);
-    temp_2[7] = _mm256_permute2x128_si256(temp[11], temp[15], 0x21);
-    temp[11] = _mm256_blend_epi32(temp[11], temp_2[7], 0xf0);
-    temp[15] = _mm256_blend_epi32(temp_2[7], temp[15], 0xf0);
+    temp0 = _mm256_unpacklo_epi64(temp_2[0], temp_2[2]);
+    temp1 = _mm256_unpackhi_epi64(temp_2[0], temp_2[2]);
+    temp2 = _mm256_unpacklo_epi64(temp_2[1], temp_2[3]);
+    temp3 = _mm256_unpackhi_epi64(temp_2[1], temp_2[3]);
+    temp4 = _mm256_unpacklo_epi64(temp_2[4], temp_2[6]);
+    temp5 = _mm256_unpackhi_epi64(temp_2[4], temp_2[6]);
+    temp6 = _mm256_unpacklo_epi64(temp_2[5], temp_2[7]);
+    temp7 = _mm256_unpackhi_epi64(temp_2[5], temp_2[7]);
+    temp8 = _mm256_unpacklo_epi64(temp_2[8], temp_2[10]);
+    temp9 = _mm256_unpackhi_epi64(temp_2[8], temp_2[10]);
+    temp10 = _mm256_unpacklo_epi64(temp_2[9], temp_2[11]);
+    temp11 = _mm256_unpackhi_epi64(temp_2[9], temp_2[11]);
+    temp12 = _mm256_unpacklo_epi64(temp_2[12], temp_2[14]);
+    temp13 = _mm256_unpackhi_epi64(temp_2[12], temp_2[14]);
+    temp14 = _mm256_unpacklo_epi64(temp_2[13], temp_2[15]);
+    temp15 = _mm256_unpackhi_epi64(temp_2[13], temp_2[15]);
 
+    temp_2[0] = _mm256_permute2x128_si256(temp0, temp4, 0x21);
+    temp0 = _mm256_blend_epi32(temp0, temp_2[0], 0xf0);
+    temp4 = _mm256_blend_epi32(temp_2[0], temp4, 0xf0);
+    temp_2[1] = _mm256_permute2x128_si256(temp1, temp5, 0x21);
+    temp1 = _mm256_blend_epi32(temp1, temp_2[1], 0xf0);
+    temp5 = _mm256_blend_epi32(temp_2[1], temp5, 0xf0);
+    temp_2[2] = _mm256_permute2x128_si256(temp2, temp6, 0x21);
+    temp2 = _mm256_blend_epi32(temp2, temp_2[2], 0xf0);
+    temp6 = _mm256_blend_epi32(temp_2[2], temp6, 0xf0);
+    temp_2[3] = _mm256_permute2x128_si256(temp3, temp7, 0x21);
+    temp3 = _mm256_blend_epi32(temp3, temp_2[3], 0xf0);
+    temp7 = _mm256_blend_epi32(temp_2[3], temp7, 0xf0);
+    temp_2[4] = _mm256_permute2x128_si256(temp8, temp12, 0x21);
+    temp8 = _mm256_blend_epi32(temp8, temp_2[4], 0xf0);
+    temp12 = _mm256_blend_epi32(temp_2[4], temp12, 0xf0);
+    temp_2[5] = _mm256_permute2x128_si256(temp9, temp13, 0x21);
+    temp9 = _mm256_blend_epi32(temp9, temp_2[5], 0xf0);
+    temp13 = _mm256_blend_epi32(temp_2[5], temp13, 0xf0);
+    temp_2[6] = _mm256_permute2x128_si256(temp10, temp14, 0x21);
+    temp10 = _mm256_blend_epi32(temp10, temp_2[6], 0xf0);
+    temp14 = _mm256_blend_epi32(temp_2[6], temp14, 0xf0);
+    temp_2[7] = _mm256_permute2x128_si256(temp11, temp15, 0x21);
+    temp11 = _mm256_blend_epi32(temp11, temp_2[7], 0xf0);
+    temp15 = _mm256_blend_epi32(temp_2[7], temp15, 0xf0);
 
-    __m256i input_vect[16];
-    for (int i = 0; i < 16; i++){
-        input_vect[i] = _mm256_load_si256((__m256i *)(input + (i<<5)));
-    }
+    //XOR INPUT WITH THE SCRUMBLED STATE
+    temp0 = _mm256_xor_si256(temp0, _mm256_load_si256((__m256i *)(input + 0)));
+    temp8 = _mm256_xor_si256(temp8, _mm256_load_si256((__m256i *)(input + 32)));
+    temp1 = _mm256_xor_si256(temp1, _mm256_load_si256((__m256i *)(input + 64)));
+    temp9 = _mm256_xor_si256(temp9, _mm256_load_si256((__m256i *)(input + 96)));
+    temp2 = _mm256_xor_si256(temp2, _mm256_load_si256((__m256i *)(input + 128)));
+    temp10 = _mm256_xor_si256(temp10, _mm256_load_si256((__m256i *)(input + 160)));
+    temp3 = _mm256_xor_si256(temp3, _mm256_load_si256((__m256i *)(input + 192)));
+    temp11 = _mm256_xor_si256(temp11, _mm256_load_si256((__m256i *)(input + 224)));
+    temp4 = _mm256_xor_si256(temp4, _mm256_load_si256((__m256i *)(input + 256)));
+    temp12 = _mm256_xor_si256(temp12, _mm256_load_si256((__m256i *)(input + 288)));
+    temp5 = _mm256_xor_si256(temp5, _mm256_load_si256((__m256i *)(input + 320)));
+    temp13 = _mm256_xor_si256(temp13, _mm256_load_si256((__m256i *)(input + 352)));
+    temp6 = _mm256_xor_si256(temp6, _mm256_load_si256((__m256i *)(input + 384)));
+    temp14 = _mm256_xor_si256(temp14, _mm256_load_si256((__m256i *)(input + 416)));
+    temp7 = _mm256_xor_si256(temp7, _mm256_load_si256((__m256i *)(input + 448)));
+    temp15 = _mm256_xor_si256(temp15, _mm256_load_si256((__m256i *)(input + 480)));
 
-    for (int i = 0; i < 8; i++){
-        temp[i] = _mm256_xor_si256(temp[i], input_vect[i<<1]);
-        temp[i + 8] = _mm256_xor_si256(temp[i + 8], input_vect[(i<<1) + 1]);
-    }
-
-    for (int i = 0; i < 8; i++){
-        _mm256_store_si256((__m256i *)(input + (i<<6)), temp[i]);
-        _mm256_store_si256((__m256i *)(input + (i<<6)+ 32), temp[i + 8]);
-    }
+    //STORE THE RESULT
+    _mm256_store_si256((__m256i *)(input + 0), temp0);
+    _mm256_store_si256((__m256i *)(input + 32), temp8);
+    _mm256_store_si256((__m256i *)(input + 64), temp1);
+    _mm256_store_si256((__m256i *)(input + 96), temp9);
+    _mm256_store_si256((__m256i *)(input + 128), temp2);
+    _mm256_store_si256((__m256i *)(input + 160), temp10);
+    _mm256_store_si256((__m256i *)(input + 192), temp3);
+    _mm256_store_si256((__m256i *)(input + 224), temp11);
+    _mm256_store_si256((__m256i *)(input + 256), temp4);
+    _mm256_store_si256((__m256i *)(input + 288), temp12);
+    _mm256_store_si256((__m256i *)(input + 320), temp5);
+    _mm256_store_si256((__m256i *)(input + 352), temp13);
+    _mm256_store_si256((__m256i *)(input + 384), temp6);
+    _mm256_store_si256((__m256i *)(input + 416), temp14);
+    _mm256_store_si256((__m256i *)(input + 448), temp7);
+    _mm256_store_si256((__m256i *)(input + 480), temp15);
 }
 
 void ChaCha20::encrypt_opt3(uint8_t *input, long len){
@@ -494,7 +541,7 @@ void ChaCha20::encrypt_opt3(uint8_t *input, long len){
 
     for (int i = 0; i < 16; i++){
         temp[i] = _mm256_set1_epi32(this->state[i]);
-        initial_state[i] = _mm256_set1_epi32(this->state[i]);
+        initial_state[i] = temp[i];
     }
 
     quarter_round_vect(&temp[1], &temp[5], &temp[9], &temp[13], rotate16, rotate8);
@@ -519,7 +566,7 @@ void ChaCha20::encrypt_opt3(uint8_t *input, long len){
 #else
     #pragma omp parallel for shared(input, temp, initial_state, adder, rotate16, rotate8)
     for (long i = 0; i < num_blocks_8; i++){
-        this->block_quarter_round_opt3_little_endian(input + (i<<9), (i<<3) + 1, temp, adder, initial_state, rotate16, rotate8);
+        this->block_quarter_round_opt3_little_endian(input + (i<<9), (i<<3) + 1, temp[0], temp[1], temp[2], temp[3], temp[4], temp[5], temp[6], temp[7], temp[8], temp[9], temp[10], temp[11], temp[12], temp[13], temp[14], temp[15], adder, initial_state, rotate16, rotate8);
     }
 
     if (over_8 != 0){
@@ -577,7 +624,7 @@ void ChaCha20::encrypt_opt4(uint8_t *input, long len){
 #else
     #pragma omp parallel for schedule(dynamic, 32768) shared(input, temp, initial_state, adder, rotate16, rotate8)
     for (long i = 0; i < num_blocks_8; i++){
-        this->block_quarter_round_opt3_little_endian(input + (i<<9), (i<<3) + 1, temp, adder, initial_state, rotate16, rotate8);
+        this->block_quarter_round_opt3_little_endian(input + (i<<9), (i<<3) + 1, temp[0], temp[1], temp[2], temp[3], temp[4], temp[5], temp[6], temp[7], temp[8], temp[9], temp[10], temp[11], temp[12], temp[13], temp[14], temp[15], adder, initial_state, rotate16, rotate8);
     }
 
     if (over_8 != 0){
@@ -636,7 +683,7 @@ void ChaCha20::encrypt_opt5(uint8_t *input, long len){
 #else
     #pragma omp parallel for schedule(guided) shared(input, temp, initial_state, adder, rotate16, rotate8)
     for (long i = 0; i < num_blocks_8; i++){
-        this->block_quarter_round_opt3_little_endian(input + (i<<9), (i<<3) + 1, temp, adder, initial_state, rotate16, rotate8);
+        this->block_quarter_round_opt3_little_endian(input + (i<<9), (i<<3) + 1, temp[0], temp[1], temp[2], temp[3], temp[4], temp[5], temp[6], temp[7], temp[8], temp[9], temp[10], temp[11], temp[12], temp[13], temp[14], temp[15], adder, initial_state, rotate16, rotate8);
     }
 
     if (over_8 != 0){
