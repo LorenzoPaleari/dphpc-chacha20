@@ -607,7 +607,7 @@ void ChaCha20::encrypt_opt4(uint8_t *input, long len){
     quarter_round_vect(&temp[3], &temp[7], &temp[11], &temp[15], rotate16, rotate8);
 
 #if __BYTE_ORDER__ == __BIG_ENDIAN__
-    #pragma omp parallel for schedule(dynamic, 32768) shared(input, temp, initial_state, adder, rotate16, rotate8)
+    #pragma omp parallel for schedule(dynamic) shared(input, temp, initial_state, adder, rotate16, rotate8)
     for (long i = 0; i < num_blocks_8; i++){
         uint8_t result[512];
         this->block_quarter_round_opt3_big_endian(result, (i<<3) + 1, temp, adder, initial_state, rotate16, rotate8);
@@ -622,7 +622,7 @@ void ChaCha20::encrypt_opt4(uint8_t *input, long len){
             *(input + (num_blocks_8<<9) + j) ^= *(result + j);
     }
 #else
-    #pragma omp parallel for schedule(dynamic, 32768) shared(input, temp, initial_state, adder, rotate16, rotate8)
+    #pragma omp parallel for schedule(dynamic) shared(input, temp, initial_state, adder, rotate16, rotate8)
     for (long i = 0; i < num_blocks_8; i++){
         this->block_quarter_round_opt3_little_endian(input + (i<<9), (i<<3) + 1, temp[0], temp[1], temp[2], temp[3], temp[4], temp[5], temp[6], temp[7], temp[8], temp[9], temp[10], temp[11], temp[12], temp[13], temp[14], temp[15], adder, initial_state, rotate16, rotate8);
     }
