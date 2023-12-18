@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <math.h>
 #include <sodium.h>
+#include <random>
 
 #ifdef Darwin
 #include "/usr/local/opt/libomp/include/omp.h"
@@ -158,30 +159,36 @@ static bool multiple_run(const char *argv[], ChaCha20 c, int n_opt, uint8_t key[
                     // Generate random message with maximum threads available
                     omp_set_num_threads(max_th);
                     auto start = std::chrono::high_resolution_clock::now();
-                    #pragma omp parallel for
-                    for (long t = 0; t < (long)start_len/1024; t+=1){
-                        int r = rand();
-                        int b = rand();
-                        for (long i = t*256; i < t*256 + 256; i+=8) {
-                            long v = i + 4;
-                            r ^= 305419896;
-                            *(message + i) = r;
-                            b ^= 305419896;
-                            *(message + v) = b;
-                            r ^= 696739139; 
-                            *(message + i + 1) = r;
-                            b ^= 696739139;
-                            *(message + v + 1) = b;
-                            r ^= 525096261;
-                            *(message + i + 2) = r;
-                            b ^= 525096261;
-                            *(message + v + 2) = b;
-                            r ^= 123456789;                        
-                            *(message + i + 3) = r;
-                            b ^= 123456789;                  
-                            *(message + v + 3) = b;
-                            r += 834567890;
-                            b += 834567890;
+                    #pragma omp parallel
+                    {   
+                        std::random_device rd; //Initialize random device with seed (one each thread)
+                        std::mt19937_64 gen(rd()); //Initialize random generator with seed
+                        std::uniform_int_distribution<uint32_t> distrib(0x01010101, 0xFFFFFFFF); //Initialize distribution
+                        #pragma omp for
+                        for (long t = 0; t < (long)start_len/1024; t+=1){
+                            uint32_t r = distrib(gen);
+                            uint32_t b = distrib(gen);
+                            for (long i = t*256; i < t*256 + 256; i+=8) {
+                                long v = i + 4;
+                                r ^= 305419896;
+                                *(message + i) = r;
+                                b ^= 305419896;
+                                *(message + v) = b;
+                                r ^= 696739139; 
+                                *(message + i + 1) = r;
+                                b ^= 696739139;
+                                *(message + v + 1) = b;
+                                r ^= 525096261;
+                                *(message + i + 2) = r;
+                                b ^= 525096261;
+                                *(message + v + 2) = b;
+                                r ^= 123456789;                        
+                                *(message + i + 3) = r;
+                                b ^= 123456789;                  
+                                *(message + v + 3) = b;
+                                r += 834567890;
+                                b += 834567890;
+                            }
                         }
                     }
                     auto end = std::chrono::high_resolution_clock::now();
