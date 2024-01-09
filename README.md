@@ -5,18 +5,34 @@ Number of threads modifiable inside [here](./num_thread_definer.sh)
 
 ## Current valid commands
 
+#### Compilation
+
+```
+make compile-base
+make compile-vect
+make compile-all //All of the above
+```
+
 #### Single run with specific file:
 
 ```
 make s_run LEN=YOUR_DATA_SIZE VER=OPTIMIZATION_VERSION (default to 0)
+make s_run-vect LEN=YOUR_DATA_SIZE VER=OPTIMIZATION_VERSION
 make s_run LEN=4069 //For example
 ```
 
 #### Multiple run (starting from 1024 going up by multiplicative factor of 4):
 ```
 make m_run LEN=MAX_DATA_SIZE
+make m_run-vect LEN=MAX_DATA_SIZE
 make m_run LEN=67108864
 //For example this last command will test 1024 4096 16384 ... 67108864
+```
+
+#### Plotting Results
+Needs to be runned after a valid run or it will not have the necessary data
+```
+make plot
 ```
 
 #### Valgrind

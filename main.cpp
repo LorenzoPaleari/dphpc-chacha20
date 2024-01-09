@@ -3,12 +3,15 @@
 #include <iostream>
 #include <string.h>
 #include <chrono>
+#include <cstdint>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <math.h>
 #include <sodium.h>
 #include <random>
+#include <immintrin.h>
+#include <x86intrin.h>
 
 #ifdef Darwin
 #include "/usr/local/opt/libomp/include/omp.h"
@@ -16,33 +19,38 @@
 #include <omp.h>
 #endif
 
-#define N_RUNS 20
-#define OPT_L 6
+#define N_RUNS 15
+#define OPT_L 5
 using namespace std;
 
-static long *start_run(uint8_t *message, long len, ChaCha20 c, int opt_n, uint8_t key[32], uint8_t nonce[12], bool decrypt = false){
-    long *times = (long *) malloc(sizeof(long) * 2);
+static long long *start_run(uint8_t *message, long len, ChaCha20 c, int opt_n, uint8_t key[32], uint8_t nonce[12], bool decrypt = false){
+    long long *times = (long long *) malloc(sizeof(long long) * 2);
 
     auto start = std::chrono::high_resolution_clock::now();
+    //auto start = __rdtsc();
     if(opt_n == -1){
         crypto_stream_chacha20_ietf_xor_ic(message, message, len, nonce, 1, key);
     } else {
         c.encryptOpt(opt_n, message, len);
     }
+    //auto end = __rdtsc();
     auto end = std::chrono::high_resolution_clock::now();
+    //times[0] = end - start;
     times[0] = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
     
     if (decrypt){
+        //start = __rdtsc();
         start = std::chrono::high_resolution_clock::now();
         if(opt_n == -1){
             crypto_stream_chacha20_ietf_xor_ic(message, message, len, nonce, 1, key);
         } else {
             c.decryptOpt(opt_n, message, len);
         }
+        //end = __rdtsc();
         end = std::chrono::high_resolution_clock::now();
+        //times[1] = end - start;
         times[1] = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
     }
-
     return times;
 }
 
@@ -76,7 +84,7 @@ static bool from_file(char const *argv[]){
     //Init ChaCha20 - Creation of state
     ChaCha20 chacha = ChaCha20(key, nonce);
 
-    long *time = start_run(message, len, chacha, opt, key, nonce, true);
+    long long *time = start_run(message, len, chacha, opt, key, nonce, true);
     cout << "Enc Time: " << time[0] << " microseconds" << endl;
     cout << "Dec Time: " << time[1] << " microseconds" << endl;
 
@@ -115,7 +123,7 @@ static bool multiple_run(const char *argv[], ChaCha20 c, int n_opt, uint8_t key[
             cout << "\n\033[32;1mRunning optimization " << p << "\033[0m\n"<< endl;
         }
 
-        long start_len = 1024; // 1 KB
+        long start_len = (long)1 << (long)30; //1024*1024*1024; // 1 GB
         while(start_len <= max_len_size) {
             // write to file output_data/{len}_out - create if not exists
             cout << "Running with len: " << parse_len(start_len) << endl;
@@ -139,6 +147,7 @@ static bool multiple_run(const char *argv[], ChaCha20 c, int n_opt, uint8_t key[
 
             int thread_runs = (int)log2(n_threads)+1;
             long *gen_time = (long *) malloc(sizeof(long) * N_RUNS * thread_runs);
+
             while (n < N_RUNS){
                 
                 // Initialize the counter for original version
@@ -194,23 +203,25 @@ static bool multiple_run(const char *argv[], ChaCha20 c, int n_opt, uint8_t key[
                     auto end = std::chrono::high_resolution_clock::now();
                     gen_time[n*thread_runs + (int)log2(k)] = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
 
-                    printf("\rCleaning Line                                           ");
+                    printf("\rCleaning Line                                                        ");
                     printf("\rRun %d/%d - %d threads", n+1, N_RUNS, k);
                     fflush(stdout);
 
                     omp_set_num_threads(k);
-                    long *time = start_run((uint8_t *)message, start_len, c, p, key, nonce);
+                    long long *time = start_run((uint8_t *)message, start_len, c, p, key, nonce);
 
-                    fprintf(fp, "%ld", time[0]);
+                    fprintf(fp, "%lld", time[0]);
                     if (k*2 <= n_threads) {
                         fprintf(fp, ",");
                     }
+                        
                     free(message);
                     free(time);
                 }
-                n++;
                 fprintf(fp, "\n");
+                n++;
             }
+            printf("\rCleaning Line                                                        ");
             printf("\rRun %d/%d - \033[32mCompleted\033[0m", N_RUNS, N_RUNS);
             fflush(stdout);
 
@@ -227,7 +238,7 @@ static bool multiple_run(const char *argv[], ChaCha20 c, int n_opt, uint8_t key[
             free(gen_time);
             fclose(fp);
 
-            start_len *= 4;
+            start_len *= 2;
         }
     }
 

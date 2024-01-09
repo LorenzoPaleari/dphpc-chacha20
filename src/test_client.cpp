@@ -1,12 +1,14 @@
 #include "../include/test_client.hpp"
 #include "../include/chacha.hpp"
+//#include "../src/chacha.cpp"
 #include <string.h>
 #include <iostream>
 #include <sodium.h>
+#include <cstdint>
 
 using namespace std;
 
-#define OPT_L 6
+#define OPT_L 5
 #define IS_BIG_ENDIAN (!*(unsigned char *)&(uint16_t){1})
 
 TestClient::TestClient(){
@@ -88,28 +90,22 @@ bool chacha20_rfc(int opt){
             block.block_quarter_round_opt1(result,1,temp);
             break;
         case 2:
-            block.quarter_round_opt2(&temp[1], &temp[5], &temp[9], &temp[13]);
-            block.quarter_round_opt2(&temp[2], &temp[6], &temp[10], &temp[14]);
-            block.quarter_round_opt2(&temp[3], &temp[7], &temp[11], &temp[15]);
-            block.block_quarter_round_opt2(result,1,temp);
+            block.quarter_round_vect(&temp_3[1], &temp_3[5], &temp_3[9], &temp_3[13], rotate16, rotate8);
+            block.quarter_round_vect(&temp_3[2], &temp_3[6], &temp_3[10], &temp_3[14], rotate16, rotate8);
+            block.quarter_round_vect(&temp_3[3], &temp_3[7], &temp_3[11], &temp_3[15], rotate16, rotate8);
+            block.block_quarter_round_opt2_big_endian(result_vect,1, temp_3, _mm256_set_epi32(7,6,5,4,3,2,1,0), initial_state, rotate16, rotate8);
             break;
         case 3:
             block.quarter_round_vect(&temp_3[1], &temp_3[5], &temp_3[9], &temp_3[13], rotate16, rotate8);
             block.quarter_round_vect(&temp_3[2], &temp_3[6], &temp_3[10], &temp_3[14], rotate16, rotate8);
             block.quarter_round_vect(&temp_3[3], &temp_3[7], &temp_3[11], &temp_3[15], rotate16, rotate8);
-            block.block_quarter_round_opt3_big_endian(result_vect,1, temp_3, _mm256_set_epi32(7,6,5,4,3,2,1,0), initial_state, rotate16, rotate8);
+            block.block_quarter_round_opt2_big_endian(result_vect,1, temp_3, _mm256_set_epi32(7,6,5,4,3,2,1,0), initial_state, rotate16, rotate8);
             break;
         case 4:
             block.quarter_round_vect(&temp_3[1], &temp_3[5], &temp_3[9], &temp_3[13], rotate16, rotate8);
             block.quarter_round_vect(&temp_3[2], &temp_3[6], &temp_3[10], &temp_3[14], rotate16, rotate8);
             block.quarter_round_vect(&temp_3[3], &temp_3[7], &temp_3[11], &temp_3[15], rotate16, rotate8);
-            block.block_quarter_round_opt3_big_endian(result_vect,1, temp_3, _mm256_set_epi32(7,6,5,4,3,2,1,0), initial_state, rotate16, rotate8);
-            break;
-        case 5:
-            block.quarter_round_vect(&temp_3[1], &temp_3[5], &temp_3[9], &temp_3[13], rotate16, rotate8);
-            block.quarter_round_vect(&temp_3[2], &temp_3[6], &temp_3[10], &temp_3[14], rotate16, rotate8);
-            block.quarter_round_vect(&temp_3[3], &temp_3[7], &temp_3[11], &temp_3[15], rotate16, rotate8);
-            block.block_quarter_round_opt3_big_endian(result_vect,1, temp_3, _mm256_set_epi32(7,6,5,4,3,2,1,0), initial_state, rotate16, rotate8);
+            block.block_quarter_round_opt2_big_endian(result_vect,1, temp_3, _mm256_set_epi32(7,6,5,4,3,2,1,0), initial_state, rotate16, rotate8);
             break;
         default:
             break;
@@ -122,7 +118,7 @@ bool chacha20_rfc(int opt){
        0xb5, 0x12, 0x9c, 0xd1, 0xde, 0x16, 0x4e, 0xb9, 0xcb, 0xd0, 0x83, 0xe8, 0xa2, 0x50, 0x3c, 0x4e
     };
 
-    if (opt > 2){
+    if (opt >= 2){
         for (int i = 0; i < 64; i++){
             if (result_vect[i] != expected_result[i]){
                 return false;
