@@ -38,7 +38,7 @@ for file in files:
         size = file.split('_')[0]
         opt_num = file.split('_')[1][3]
 
-        if int(size) > 1000000000:
+        if int(size) > 1000000:
             if opt_num == '-': # ORIGINAL!
                 arr_enc = []
                 #arr_dec = []
@@ -148,7 +148,7 @@ opt_colors = {'2': '#1f77b4',  # Muted blue
               '4': '#d62728'}  # Muted red
 opt_labels = {'2': 'Static', '3': 'Dynamic', '4': 'Guided'}
 
-fig, ax = plt.subplots(figsize=(14, 8.4))
+fig, ax = plt.subplots(figsize=(14, 8.5))
 
 # # Iterate over each size
 for j, size in enumerate(sizes):
@@ -169,7 +169,7 @@ ax.set_xticks(np.arange(len(sizes)) + width*3, [format_size(size) for size in si
 
 ax.set_xlabel('Size of Input', fontsize=14)
 ax.set_ylabel('Throughput Gb/s', fontsize=14)
-ax.set_title('Comparison of Throughput for Different Scheduling Policies', fontsize=16)
+ax.set_title('Comparison of Throughput for Different Scheduling Policies using 128 Threads', fontsize=16)
 
 # Only add the legend if it's necessary
 ax.legend()
@@ -181,7 +181,7 @@ ax.spines['bottom'].set_linewidth(2)
 for spine in ax.spines.values():
     spine.set_zorder(4)
 ax.tick_params(axis='y', length=0, pad=10, labelsize=12)
-ax.tick_params(axis='x', pad=6, width=2, length=5, labelsize=12)
+ax.tick_params(axis='x', pad=6, width=2, length=5, labelsize=12, rotation=80)
 ax.set_facecolor('#e5e5e5')
 fig.savefig('./output_data_final/comparison_bar_graph.svg', format="svg")
 
@@ -189,10 +189,10 @@ fig.savefig('./output_data_final/comparison_bar_graph.svg', format="svg")
 for opt in optimizations:
         sizes = sorted(graph_array[opt].keys(), key=int)  # sort the sizes
         # Plot for encryption
-        fig, ax = plt.subplots(figsize=(14, 8.4))
+        fig, ax = plt.subplots(figsize=(14, 8.5))
         for i in range(len(graph_array[opt][sizes[0]]['tp'])):  # number of threads
             error = [std_dev_enc_tp[opt][size][i] for size in sizes]
-            ax.errorbar([format_size(size) for size in sizes], [graph_array[opt][size]['tp'][i] for size in sizes], yerr=error,linewidth=1.5,fmt='-o',capsize=3.0,markeredgecolor='white',markersize=10, label=f'{cores_label[i]} Threads ({opt_speedup_enc[opt][i]:.2f}x) - {max(graph_array[opt][size]["tp"][i] for size in sizes[-4:]):.2f}')
+            ax.errorbar([format_size(size) for size in sizes], [graph_array[opt][size]['tp'][i] for size in sizes], yerr=error,linewidth=1.5,fmt='-o',capsize=3.0,markeredgecolor='white',markersize=10, label=f'{cores_label[i]} Threads ({opt_speedup_enc[opt][i]:.2f}x)')
         ax.set_xlabel('Size of Input', fontsize=14)
         ax.set_ylabel('Throughput GB/s', fontsize=14)
         ax.set_title('Encryption Throughput vs Size of Input for Different Threads', fontsize=16)
@@ -203,7 +203,7 @@ for opt in optimizations:
         ax.spines['left'].set_visible(False)
         ax.spines['bottom'].set_linewidth(2)
         ax.tick_params(axis='y', length=0, pad=10, labelsize=12)
-        ax.tick_params(axis='x', pad=6, width=2, length=5, labelsize=12)
+        ax.tick_params(axis='x', pad=6, width=2, length=5, labelsize=12, rotation=80)
         ax.set_facecolor('#e5e5e5')
         fig.savefig('./output_data_final/enc_tp_opt'+ opt +'.svg', format="svg")
 
@@ -232,16 +232,21 @@ for opt in optimizations:
 #     ax.set_facecolor('#e5e5e5')
 #     fig.savefig(f'./output_data_final/{l}_time_single.svg', format="svg")
 
+opt_label = {'0': 'Base',  # Muted blue
+              '1': 'Improved Base',  # Muted green
+              '2': 'Vectorized Static',
+              '3': 'Vectorized Dynamic',
+              '4': 'Vectorized Guided',}
 
 lbl = ["tp"] # , "dec"]
 for l in lbl:
-    fig, ax = plt.subplots(figsize=(14, 8.4))
+    fig, ax = plt.subplots(figsize=(14, 8.5))
     for opt in optimizations:
         sizes = sorted(graph_array[opt].keys(), key=int)  # sort the sizes
         #plot the first element of each size
         error = [std_dev_enc_tp[opt][size][0] for size in sizes]
-        ax.errorbar([format_size(size) for size in sizes], [graph_array[opt][size][l][0] for size in sizes], yerr=error,linewidth=1.5,marker="o",capsize=3.0,markeredgecolor='white',markersize=10, label=f'Optimization {opt}')
-    ax.errorbar([format_size(size) for size in sizes], [original_dict[size][l] for size in sizes], yerr=original_std_dev_tp,linewidth=1.5,marker="o",capsize=3.0,markeredgecolor='white',markersize=10, label=f'Original')
+        ax.errorbar([format_size(size) for size in sizes], [graph_array[opt][size][l][0] for size in sizes], yerr=error,linewidth=1.5,marker="o",capsize=3.0,markeredgecolor='white',markersize=10, label=f'{opt_label[opt]}')
+    ax.errorbar([format_size(size) for size in sizes], [original_dict[size][l] for size in sizes], yerr=original_std_dev_tp,linewidth=1.5,marker="o",capsize=3.0,markeredgecolor='white',markersize=10, label=f'LibSodium')
     ax.set_title("Encryption Throughput for Single Thread", fontsize=16)
     ax.set_xlabel('Size of Input', fontsize=14)
     ax.set_ylabel('Throughput GB/s', fontsize=14)
@@ -253,6 +258,6 @@ for l in lbl:
     ax.spines['left'].set_visible(False)
     ax.spines['bottom'].set_linewidth(2)
     ax.tick_params(axis='y', length=0, pad=10, labelsize=12)
-    ax.tick_params(axis='x', pad=6, width=2, length=5, labelsize=12)
+    ax.tick_params(axis='x', pad=6, width=2, length=5, labelsize=12, rotation=80)
     ax.set_facecolor('#e5e5e5')
     fig.savefig(f'./output_data_final/enc_{l}_single.svg', format="svg")
