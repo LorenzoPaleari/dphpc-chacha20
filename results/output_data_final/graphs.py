@@ -38,7 +38,7 @@ for file in files:
         size = file.split('_')[0]
         opt_num = file.split('_')[1][3]
 
-        if int(size) > 1000000000:
+        if int(size) > 1000000:
             if opt_num == '-': # ORIGINAL!
                 arr_enc = []
                 #arr_dec = []
@@ -49,9 +49,9 @@ for file in files:
                     #enc, dec = l.split('/')
                     arr_enc.append(float(l)/1000000)
                     #arr_dec.append(float(dec)/1000000)
-                original_dict[size] = { 'enc': sum(arr_enc) / len(arr_enc), 'tp': sum([int(size) / t / (1024*1024*128) for t in arr_enc]) / len(arr_enc)} # , 'dec': sum(arr_dec) / len(arr_dec) }
+                original_dict[size] = { 'enc': sum(arr_enc) / len(arr_enc), 'tp': sum([int(size) / t / (1024*1024*1024) for t in arr_enc]) / len(arr_enc)} # , 'dec': sum(arr_dec) / len(arr_dec) }
                 original_std_dev.append(np.std(arr_enc))
-                original_std_dev_tp.append(np.std([(int(size) / t) / (1024*1024*128) for t in arr_enc]))
+                original_std_dev_tp.append(np.std([(int(size) / t) / (1024*1024*1024) for t in arr_enc]))
                 continue
 
             cores_label = f.readline().strip().split(',')
@@ -73,10 +73,10 @@ for file in files:
                 # mean_dict[size]['dec'].append(t_threads_dec)
 
             std_dev_enc[opt_num][size] = [np.std(t) for t in zip(*mean_dict[size]['enc'])]
-            std_dev_enc_tp[opt_num][size] = [np.std([(int(size) / t) / (1024*1024*128) for t in thread]) for thread in zip(*mean_dict[size]['tp'])]
+            std_dev_enc_tp[opt_num][size] = [np.std([(int(size) / t) / (1024*1024*1024) for t in thread]) for thread in zip(*mean_dict[size]['tp'])]
             
             mean_dict[size]['enc'] = [ sum(t) / len(t) for t in zip(*mean_dict[size]['enc']) ]
-            mean_dict[size]['tp'] = [ sum([(int(size) / t) / (1024*1024*128) for t in thread]) / len(thread) for thread in zip(*mean_dict[size]['tp']) ]
+            mean_dict[size]['tp'] = [ sum([(int(size) / t) / (1024*1024*1024) for t in thread]) / len(thread) for thread in zip(*mean_dict[size]['tp']) ]
             # mean_dict[size]['dec'] = [ sum(t) / len(t) for t in zip(*mean_dict[size]['dec']) ]
             
             if opt_num not in graph_array:
@@ -108,19 +108,26 @@ for opt in optimizations:
     # opt_speedup_dec[opt] = speedup_dec
 
 
-for opt in optimizations:
-    sizes = sorted(graph_array[opt].keys(), key=int)  # sort the sizes
-    # Plot for encryption
-    plt.figure(figsize=(14, 8.4))
-    for i in range(len(graph_array[opt][sizes[0]]['enc'])):  # number of threads
-        error = [std_dev_enc[opt][size][i] for size in sizes]
-        plt.errorbar([format_size(size) for size in sizes], [graph_array[opt][size]['enc'][i] for size in sizes], yerr=error,fmt='-o',capsize=3.0, label=f'{cores_label[i]} Threads ({opt_speedup_enc[opt][i]:.2f}x) - {graph_array[opt][sizes[-1]]["enc"][i]:.2f}')
-    plt.xlabel('Size of Input')
-    plt.ylabel('Time (s)')
-    plt.title('Encryption Time vs Size of Input for Different Threads')
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.savefig('./output_data_final/enc_time_opt'+ opt +'.png')
+# for opt in optimizations:
+#     sizes = sorted(graph_array[opt].keys(), key=int)  # sort the sizes
+#     # Plot for encryption
+#     fig, ax = plt.subplots(figsize=(14, 8.4))
+#     for i in range(len(graph_array[opt][sizes[0]]['enc'])):  # number of threads
+#         error = [std_dev_enc[opt][size][i] for size in sizes]
+#         ax.errorbar([format_size(size) for size in sizes], [graph_array[opt][size]['enc'][i] for size in sizes], yerr=error,linewidth=1.5,fmt='-o',capsize=3.0,markeredgecolor='white',markersize=10,label=f'{cores_label[i]} Threads ({opt_speedup_enc[opt][i]:.2f}x) - {graph_array[opt][sizes[-1]]["enc"][i]:.2f}')
+#     ax.set_xlabel('Size of Input', fontsize=14)
+#     ax.set_ylabel('Time (s)', fontsize=14)
+#     ax.set_title('Encryption Time vs Size of Input for Different Threads', fontsize=16)
+#     ax.legend(loc='upper left')
+#     ax.yaxis.grid(True, linewidth=2, c="white")
+#     ax.spines['top'].set_visible(False)
+#     ax.spines['right'].set_visible(False)
+#     ax.spines['left'].set_visible(False)
+#     ax.spines['bottom'].set_linewidth(2)
+#     ax.tick_params(axis='y', length=0, pad=10, labelsize=12)
+#     ax.tick_params(axis='x', pad=6, width=2, length=5, labelsize=12)
+#     ax.set_facecolor('#e5e5e5')
+#     fig.savefig('./output_data_final/enc_time_opt'+ opt +'.svg', format='svg')
 
     # Plot for decryption
     # plt.figure(figsize=(10, 6))
@@ -141,7 +148,7 @@ opt_colors = {'2': '#1f77b4',  # Muted blue
               '4': '#d62728'}  # Muted red
 opt_labels = {'2': 'Static', '3': 'Dynamic', '4': 'Guided'}
 
-plt.figure(figsize=(14, 8.4))
+fig, ax = plt.subplots(figsize=(14, 8.4))
 
 # # Iterate over each size
 for j, size in enumerate(sizes):
@@ -155,67 +162,97 @@ for j, size in enumerate(sizes):
             throughput = graph_array[opt][size]['tp'][-1]  # Replace with your actual data retrieval method
 
             # Plot the bar
-            plt.bar(x_pos[j], throughput, width, color=opt_colors[opt], label=f'{opt_labels[opt]}' if j == 0 else "")
+            ax.bar(x_pos[j], throughput, width, color=opt_colors[opt],zorder=3, label=f'{opt_labels[opt]}' if j == 0 else "")
 
 # Set the x-axis labels to be in the middle of each group of bars
-plt.xticks(np.arange(len(sizes)) + width, [format_size(size) for size in sizes])
+ax.set_xticks(np.arange(len(sizes)) + width*3, [format_size(size) for size in sizes])
 
-plt.xlabel('Size of Input')
-plt.ylabel('Throughput Gb/s')
-plt.title('Comparison of Throughput for Different Scheduling Policies')
+ax.set_xlabel('Size of Input', fontsize=14)
+ax.set_ylabel('Throughput Gb/s', fontsize=14)
+ax.set_title('Comparison of Throughput for Different Scheduling Policies', fontsize=16)
 
 # Only add the legend if it's necessary
-plt.legend()
-
-plt.grid(True)
-plt.savefig('./output_data_final/comparison_bar_graph.png')
+ax.legend()
+ax.yaxis.grid(True, linewidth=2, c="white")
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_visible(False)
+ax.spines['bottom'].set_linewidth(2)
+for spine in ax.spines.values():
+    spine.set_zorder(4)
+ax.tick_params(axis='y', length=0, pad=10, labelsize=12)
+ax.tick_params(axis='x', pad=6, width=2, length=5, labelsize=12)
+ax.set_facecolor('#e5e5e5')
+fig.savefig('./output_data_final/comparison_bar_graph.svg', format="svg")
 
 
 for opt in optimizations:
         sizes = sorted(graph_array[opt].keys(), key=int)  # sort the sizes
         # Plot for encryption
-        plt.figure(figsize=(14, 8.4))
+        fig, ax = plt.subplots(figsize=(14, 8.4))
         for i in range(len(graph_array[opt][sizes[0]]['tp'])):  # number of threads
             error = [std_dev_enc_tp[opt][size][i] for size in sizes]
-            plt.errorbar([format_size(size) for size in sizes], [graph_array[opt][size]['tp'][i] for size in sizes], yerr=error,fmt='-o',capsize=3.0, label=f'{cores_label[i]} Threads ({opt_speedup_enc[opt][i]:.2f}x) - {max(graph_array[opt][size]["tp"][i] for size in sizes[-4:]):.2f}')
-        plt.xlabel('Size of Input')
-        plt.ylabel('Throughput Gb/s')
-        plt.title('Encryption Throughput vs Size of Input for Different Threads')
-        plt.legend(loc='upper left')
-        plt.grid(True)
-        plt.savefig('./output_data_final/enc_tp_opt'+ opt +'.png')
+            ax.errorbar([format_size(size) for size in sizes], [graph_array[opt][size]['tp'][i] for size in sizes], yerr=error,linewidth=1.5,fmt='-o',capsize=3.0,markeredgecolor='white',markersize=10, label=f'{cores_label[i]} Threads ({opt_speedup_enc[opt][i]:.2f}x) - {max(graph_array[opt][size]["tp"][i] for size in sizes[-4:]):.2f}')
+        ax.set_xlabel('Size of Input', fontsize=14)
+        ax.set_ylabel('Throughput GB/s', fontsize=14)
+        ax.set_title('Encryption Throughput vs Size of Input for Different Threads', fontsize=16)
+        ax.legend(loc='upper left')
+        ax.yaxis.grid(True, linewidth=2, c="white")
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        ax.spines['bottom'].set_linewidth(2)
+        ax.tick_params(axis='y', length=0, pad=10, labelsize=12)
+        ax.tick_params(axis='x', pad=6, width=2, length=5, labelsize=12)
+        ax.set_facecolor('#e5e5e5')
+        fig.savefig('./output_data_final/enc_tp_opt'+ opt +'.svg', format="svg")
 
-# Display single thread speedup vs original
-lbl = ["enc"] # , "dec"]
-for l in lbl:
-    plt.figure(figsize=(14, 8.4))
-    for opt in optimizations:
-        sizes = sorted(graph_array[opt].keys(), key=int)  # sort the sizes
-        #plot the first element of each size
-        error = [std_dev_enc[opt][size][0] for size in sizes]
-        plt.errorbar([format_size(size) for size in sizes], [graph_array[opt][size][l][0] for size in sizes], yerr=error, marker='o',capsize=3.0, label=f'Optimization {opt}')
-    plt.errorbar([format_size(size) for size in sizes], [original_dict[size][l] for size in sizes], yerr=original_std_dev, marker='o',capsize=3.0, label=f'Original')
-    plt.xlabel('Size of Input')
-    plt.ylabel('Time (s)')
-    plt.yscale('log')
-    plt.title("Encryption Time for Single Thread")
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(f'./output_data_final/{l}_time_single.png')
+# # Display single thread speedup vs original
+# lbl = ["enc"] # , "dec"]
+# for l in lbl:
+#     fig, ax = plt.subplots(figsize=(14, 8.4))
+#     for opt in optimizations:
+#         sizes = sorted(graph_array[opt].keys(), key=int)  # sort the sizes
+#         #plot the first element of each size
+#         error = [std_dev_enc[opt][size][0] for size in sizes]
+#         ax.errorbar([format_size(size) for size in sizes], [graph_array[opt][size][l][0] for size in sizes], yerr=error,linewidth=1.5,marker="o",capsize=3.0,markeredgecolor='white',markersize=10, label=f'Optimization {opt}')
+#     ax.errorbar([format_size(size) for size in sizes], [original_dict[size][l] for size in sizes], yerr=original_std_dev,linewidth=1.5,marker="o",capsize=3.0,markeredgecolor='white',markersize=10, label=f'Original')
+#     ax.set_xlabel('Size of Input', fontsize=14)
+#     ax.set_ylabel('Time (s)', fontsize=14)
+#     plt.yscale('log')
+#     ax.set_title("Encryption Time for Single Thread", fontsize=16)
+#     ax.legend()
+#     ax.yaxis.grid(True, linewidth=2, c="white")
+#     ax.spines['top'].set_visible(False)
+#     ax.spines['right'].set_visible(False)
+#     ax.spines['left'].set_visible(False)
+#     ax.spines['bottom'].set_linewidth(2)
+#     ax.tick_params(axis='y', length=0, pad=10, labelsize=12)
+#     ax.tick_params(axis='x', pad=6, width=2, length=5, labelsize=12)
+#     ax.set_facecolor('#e5e5e5')
+#     fig.savefig(f'./output_data_final/{l}_time_single.svg', format="svg")
 
 
 lbl = ["tp"] # , "dec"]
 for l in lbl:
-    plt.figure(figsize=(14, 8.4))
+    fig, ax = plt.subplots(figsize=(14, 8.4))
     for opt in optimizations:
         sizes = sorted(graph_array[opt].keys(), key=int)  # sort the sizes
         #plot the first element of each size
         error = [std_dev_enc_tp[opt][size][0] for size in sizes]
-        plt.errorbar([format_size(size) for size in sizes], [graph_array[opt][size][l][0] for size in sizes], yerr=error, marker='o',capsize=3.0, label=f'Optimization {opt}')
-    plt.errorbar([format_size(size) for size in sizes], [original_dict[size][l] for size in sizes], yerr=original_std_dev_tp, marker='o',capsize=3.0, label=f'Original')
-    plt.xlabel('Size of Input')
-    plt.ylabel('Throughput Gb/s')
-    plt.title("Encryption Throughput for Single Thread")
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(f'./output_data_final/enc_{l}_single.png')
+        ax.errorbar([format_size(size) for size in sizes], [graph_array[opt][size][l][0] for size in sizes], yerr=error,linewidth=1.5,marker="o",capsize=3.0,markeredgecolor='white',markersize=10, label=f'Optimization {opt}')
+    ax.errorbar([format_size(size) for size in sizes], [original_dict[size][l] for size in sizes], yerr=original_std_dev_tp,linewidth=1.5,marker="o",capsize=3.0,markeredgecolor='white',markersize=10, label=f'Original')
+    ax.set_title("Encryption Throughput for Single Thread", fontsize=16)
+    ax.set_xlabel('Size of Input', fontsize=14)
+    ax.set_ylabel('Throughput GB/s', fontsize=14)
+    ax.set_title('Encryption Throughput vs Size of Input for Different Threads', fontsize=16)
+    ax.legend()
+    ax.yaxis.grid(True, linewidth=2, c="white")
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_linewidth(2)
+    ax.tick_params(axis='y', length=0, pad=10, labelsize=12)
+    ax.tick_params(axis='x', pad=6, width=2, length=5, labelsize=12)
+    ax.set_facecolor('#e5e5e5')
+    fig.savefig(f'./output_data_final/enc_{l}_single.svg', format="svg")
