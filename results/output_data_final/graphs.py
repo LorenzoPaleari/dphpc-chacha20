@@ -38,7 +38,7 @@ for file in files:
         size = file.split('_')[0]
         opt_num = file.split('_')[1][3]
 
-        if int(size) > 1000000:
+        if int(size) > 1000000000:
             if opt_num == '-': # ORIGINAL!
                 arr_enc = []
                 #arr_dec = []
