@@ -123,7 +123,7 @@ static bool multiple_run(const char *argv[], ChaCha20 c, int n_opt, uint8_t key[
             cout << "\n\033[32;1mRunning optimization " << p << "\033[0m\n"<< endl;
         }
 
-        long start_len = (long)1 << (long)30; //1024*1024*1024; // 1 GB
+        long start_len = (long)1 << (long)20; //1024*1024; // 1 MB
         while(start_len <= max_len_size) {
             // write to file output_data/{len}_out - create if not exists
             cout << "Running with len: " << parse_len(start_len) << endl;

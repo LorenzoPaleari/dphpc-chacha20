@@ -1,4 +1,4 @@
-# Read file by file in the folder ./output_data_final/ and plot the graphs
+# Read file by file in the folder ./output_data/ and plot the graphs
 # each file is named: {len_of_inputs}_out
 # each file has the following format:
 # {n threads}
@@ -29,12 +29,12 @@ original_dict = {}
 original_std_dev = []
 original_std_dev_tp = []
 
-files = os.listdir('./output_data_final/')
+files = os.listdir("./output_data")
 for file in files:
     if "_out" not in file:
         continue
     
-    with open('./output_data_final/' + file, 'r') as f:
+    with open("./output_data/" + file, 'r') as f:
         size = file.split('_')[0]
         opt_num = file.split('_')[1][3]
 
@@ -120,7 +120,7 @@ for opt in optimizations:
     plt.title('Encryption Time vs Size of Input for Different Threads')
     plt.legend(loc='upper left')
     plt.grid(True)
-    plt.savefig('./output_data_final/enc_time_opt'+ opt +'.png')
+    plt.savefig('./output_data/enc_time_opt'+ opt +'.png')
 
     # Plot for decryption
     # plt.figure(figsize=(10, 6))
@@ -131,7 +131,7 @@ for opt in optimizations:
     # plt.title('Decryption Time vs Size of Input for Different Threads')
     # plt.legend()
     # plt.grid(True)
-    # plt.savefig('./output_data_final/dec_time_opt'+ opt +'.png')
+    # plt.savefig('./output_data/dec_time_opt'+ opt +'.png')
 
 # Number of optimizations
 num_opts = len(optimizations)
@@ -168,7 +168,7 @@ plt.title('Comparison of Throughput for Different Scheduling Policies')
 plt.legend()
 
 plt.grid(True)
-plt.savefig('./output_data_final/comparison_bar_graph.png')
+plt.savefig('./output_data/comparison_bar_graph.png')
 
 
 for opt in optimizations:
@@ -183,7 +183,7 @@ for opt in optimizations:
         plt.title('Encryption Throughput vs Size of Input for Different Threads')
         plt.legend(loc='upper left')
         plt.grid(True)
-        plt.savefig('./output_data_final/enc_tp_opt'+ opt +'.png')
+        plt.savefig('./output_data/enc_tp_opt'+ opt +'.png')
 
 # Display single thread speedup vs original
 lbl = ["enc"] # , "dec"]
@@ -201,7 +201,7 @@ for l in lbl:
     plt.title("Encryption Time for Single Thread")
     plt.legend()
     plt.grid(True)
-    plt.savefig(f'./output_data_final/{l}_time_single.png')
+    plt.savefig(f'./output_data/{l}_time_single.png')
 
 
 lbl = ["tp"] # , "dec"]
@@ -218,4 +218,4 @@ for l in lbl:
     plt.title("Encryption Throughput for Single Thread")
     plt.legend()
     plt.grid(True)
-    plt.savefig(f'./output_data_final/enc_{l}_single.png')
+    plt.savefig(f'./output_data/enc_{l}_single.png')
