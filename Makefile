@@ -45,12 +45,16 @@ $(TARGET_VECT): $(OBJS_VECT)
 # Used on cluster - needed updated version of gcc
 #$(CXX_VECT) $(CXXFLAGS_VECT) -c $< -o $@ $(INCLUDES)
 
+
+# Single run
 s_run: compile-base check-env check-files
 	./$(TARGET) $(LEN) $(F_POS)input_$(LEN).txt $(VER)
 
 s_run-vect: compile-vect check-env check-files
 	./$(TARGET_VECT) $(LEN) $(F_POS)input_$(LEN).txt $(VER)
 
+
+# Multiple runs
 m_run: compile-base check-env
 	./$(TARGET) $(LEN)
 	@if [ $$? -eq 0 ]; then \
@@ -67,6 +71,8 @@ m_run-vect: compile-vect check-env
 	    printf "\033[1;31mError: The run failed.\033[0m\n"; exit 1; \
 	fi
 
+
+# Compilation
 compile-all: $(TARGET) $(TARGET_VECT)
 	@if [ $$? -eq 0 ]; then \
 	    printf "\n\033[1;32mCompilation ended without errors.\033[0m\n\n"; \
@@ -88,14 +94,18 @@ compile-base: $(TARGET)
 		printf "\033[1;31mError: The compilation failed.\033[0m\n"; exit 1; \
 	fi
 
+
+# Plotting
 plot:
-	@python3 -m venv venv; . ./venv/bin/activate; pip install --upgrade -q pip; pip install -q matplotlib; python3 ./output_data/graphs.py;
+	@python3 -m venv venv; . ./venv/bin/activate; pip install --upgrade pip; pip install matplotlib; python3 ./output_data/graphs.py;
 	@if [ $$? -eq 0 ]; then \
 	    printf "\r\033[1;32mResults Plotted.    \033[0m\n\n"; \
 	else \
 	    printf "\033[1;31mError plotting results\033[0m\n"; exit 1; \
 	fi
 
+
+# Profiling
 callgrind: compile check-env check-files
 	mkdir -p callgrind
 	valgrind --tool=callgrind --simulate-cache=yes --callgrind-out-file=callgrind/callgrind_$(LEN)_opt$(VER) ./$(TARGET) $(LEN) $(F_POS)input_$(LEN).txt $(VER)
@@ -103,6 +113,8 @@ callgrind: compile check-env check-files
 valgrind: compile check-env check-files
 	valgrind --leak-check=yes --track-origins=yes ./$(TARGET) $(LEN) $(F_POS)input_$(LEN).txt $(VER)
 
+
+# Check
 check-no-inline: clean
 	$(CXX) $(CXXFLAGS) -fopt-info-inline-missed -c $(FILE_CHACHA) -o $(FILE_CHACHA_O)  $(INCLUDES)
 
@@ -112,6 +124,8 @@ check-no-vectorizazion: clean
 check-no-loop-unrolling: clean
 	$(CXX) $(CXXFLAGS) -fopt-info-loop-missed -c $(FILE_CHACHA) -o $(FILE_CHACHA_O)  $(INCLUDES)
 
+
+# Clean
 clean:
 	rm -fR bin bin_vect $(OBJS) $(OBJS_VECT)
 
@@ -125,6 +139,8 @@ check-env:
 		printf "\033[1;33mERROR\033[0m\n\033[33mThe number of threads is not set. Please do: \n\nsource num_thread_definer.sh\033[0m\n\n"; \
 	fi
 
+
+# Generate input data
 check-files:
 	@MISSING_FILE=$(if $(wildcard $(F_POS)input_$(LEN).txt),,$(LEN)); \
 	MISSING_COUNT=`echo "$$MISSING_FILE" | awk '{print NF}'`; \
